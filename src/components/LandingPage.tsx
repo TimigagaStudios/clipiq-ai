@@ -15,12 +15,23 @@ import { Input } from "./ui/Input";
 import { Badge } from "./ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/Card";
 import { cn } from "../utils/cn";
+import { useState } from "react";
 
 const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
+  const [url, setUrl] = useState("");
+
+  const handleGenerate = () => {
+    if (url.trim()) {
+      // Store the URL for the dashboard to use
+      localStorage.setItem("clipiq_pending_url", url.trim());
+    }
+    onGetStarted();
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-white/10">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 glass-dark border-b border-white/5">
+      <nav className="fixed top-0 w-full z-50 glass border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
@@ -34,7 +45,6 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#how-it-works" className="hover:text-white transition-colors">How it Works</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
-
           <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="ghost" className="text-xs sm:text-sm font-medium px-2 sm:px-4">Log in</Button>
             <Button onClick={onGetStarted} className="rounded-full px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm">Get Started</Button>
@@ -78,9 +88,12 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
               <Input 
                 placeholder="Paste YouTube Link" 
                 className="bg-transparent border-none pl-11 h-12 focus-visible:ring-0 text-white"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
               />
             </div>
-            <Button onClick={onGetStarted} size="lg" className="w-full sm:w-auto rounded-xl bg-white text-black hover:bg-white/90">
+            <Button onClick={handleGenerate} size="lg" className="w-full sm:w-auto rounded-xl bg-white text-black hover:bg-white/90">
               Generate Clips
             </Button>
           </motion.div>
@@ -213,7 +226,6 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
           <Badge variant="secondary" className="px-4 py-1 rounded-full bg-white/5 border-white/10 text-white/80">Process</Badge>
           <h2 className="text-3xl md:text-5xl font-bold">Three steps to virality.</h2>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {[
             {
@@ -248,7 +260,6 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
           <h2 className="text-3xl md:text-5xl font-bold">The smarter way to create.</h2>
           <p className="text-muted-foreground text-lg">AI-powered tools designed for modern creators.</p>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             {
@@ -303,7 +314,6 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
           <h2 className="text-3xl md:text-5xl font-bold">Simple, transparent pricing.</h2>
           <p className="text-muted-foreground text-lg">Choose the plan that fits your growth.</p>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
@@ -388,7 +398,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
 
       {/* CTA Section */}
       <section className="py-24 px-4">
-        <div className="max-w-4xl mx-auto glass-dark border border-white/10 rounded-[2rem] p-12 text-center relative overflow-hidden">
+        <div className="max-w-4xl mx-auto glass border border-white/10 rounded-[2rem] p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-3xl -z-10" />
           <h2 className="text-4xl font-bold mb-6">Ready to scale your content?</h2>
           <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
@@ -420,7 +430,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#" className="hover:text-white">Terms</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2024 ClipIQ AI. All rights reserved.
+            Â© 2024 ClipIQ AI. All rights reserved.
           </p>
         </div>
       </footer>
