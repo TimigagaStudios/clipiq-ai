@@ -1,15 +1,20 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "clipiq-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server/server.js",
+    "dev:all": "npm run dev & npm run server"
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.25.0",
     "react": "19.2.6",
