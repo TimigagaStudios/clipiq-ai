@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   LayoutDashboard, 
@@ -29,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { Badge } from "./ui/Badge";
 import { cn } from "../utils/cn";
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 const SidebarItem = ({ icon: Icon, label, active = false, onClick }: any) => (
   <button
     onClick={onClick}
@@ -54,22 +56,143 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [analyzeMessage, setAnalyzeMessage] = useState("AI is identifying viral hooks...");
+  const [url, setUrl] = useState("");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [clips, setClips] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [error, setError] = useState("");
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleAnalyze = () => {
+  // Load pending URL from landing page and fetch initial data
+  useEffect(() => {
+    const pendingUrl = localStorage.getItem("clipiq_pending_url");
+    if (pendingUrl) {
+      setUrl(pendingUrl);
+      localStorage.removeItem("clipiq_pending_url");
+    }
+    fetchProjects();
+    fetchHistory();
+    fetchAnalytics();
+  }, []);
+
+  // Poll job status
+  useEffect(() => {
+    if (!jobId || !isAnalyzing) return;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/jobs/${jobId}/status`);
+        const data = await res.json();
+        setAnalyzeProgress(data.progress);
+        setAnalyzeMessage(data.message);
+        if (data.status === "completed") {
+          setIsAnalyzing(false);
+          fetchClips(jobId);
+          fetchProjects();
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        } else if (data.status === "failed") {
+          setIsAnalyzing(false);
+          setError("Analysis failed. Please try again.");
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    };
+
+    poll();
+    pollingRef.current = setInterval(poll, 800);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [jobId, isAnalyzing]);
+
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/projects`);
+      const data = await res.json();
+      setProjects(data.projects || []);
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/history`);
+      const data = await res.json();
+      setHistory(data.history || []);
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/analytics`);
+      const data = await res.json();
+      setAnalytics(data);
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+    }
+  };
+
+  const fetchClips = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${id}/clips`);
+      const data = await res.json();
+      setClips(data.clips || []);
+    } catch (err) {
+      console.error("Failed to fetch clips:", err);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!url.trim()) {
+      setError("Please enter a video URL");
+      return;
+    }
+    setError("");
     setIsAnalyzing(true);
     setAnalyzeProgress(0);
-    const interval = setInterval(() => {
-      setAnalyzeProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setIsAnalyzing(false), 500);
-          return 100;
-        }
-        return prev + 5;
+    setAnalyzeMessage("Starting analysis...");
+    setClips([]);
+
+    try {
+      const res = await fetch(`${API_BASE}/analyze-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim(), category: "auto" }),
       });
-    }, 100);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      setJobId(data.jobId);
+      setAnalyzeProgress(data.progress);
+      setAnalyzeMessage(data.message);
+    } catch (err: any) {
+      setIsAnalyzing(false);
+      setError(err.message || "Failed to start analysis");
+    }
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
+
+  const timeAgo = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
   return (
@@ -82,14 +205,12 @@ const Dashboard = () => {
           </div>
           <span className="font-bold text-xl tracking-tight">ClipIQ AI</span>
         </div>
-
         <nav className="flex-1 space-y-1">
           <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === "overview"} onClick={() => setActiveTab("overview")} />
           <SidebarItem icon={Plus} label="Generate" active={activeTab === "generate"} onClick={() => setActiveTab("generate")} />
           <SidebarItem icon={History} label="History" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
           <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} />
         </nav>
-
         <div className="space-y-1 pt-4 border-t border-white/5">
           <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
           <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10 space-y-3">
@@ -140,7 +261,6 @@ const Dashboard = () => {
                   <X className="w-5 h-5" />
                 </Button>
               </div>
-
               <nav className="flex-1 space-y-2">
                 <SidebarItem icon={LayoutDashboard} label="Overview" active={activeTab === "overview"} onClick={() => { setActiveTab("overview"); setIsMobileMenuOpen(false); }} />
                 <SidebarItem icon={Plus} label="Generate" active={activeTab === "generate"} onClick={() => { setActiveTab("generate"); setIsMobileMenuOpen(false); }} />
@@ -148,7 +268,6 @@ const Dashboard = () => {
                 <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setIsMobileMenuOpen(false); }} />
                 <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => { setActiveTab("settings"); setIsMobileMenuOpen(false); }} />
               </nav>
-
               <div className="mt-auto pt-4 border-t border-white/5">
                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
                   <div className="flex items-center justify-between">
@@ -185,7 +304,6 @@ const Dashboard = () => {
               <span className="text-white capitalize truncate">{activeTab}</span>
             </div>
           </div>
-
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -223,7 +341,6 @@ const Dashboard = () => {
                     <Button className="flex-1 sm:flex-none bg-white text-black hover:bg-white/90 text-xs font-bold">Export</Button>
                   </div>
                 </div>
-
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
                   <div className="lg:col-span-2 space-y-6">
                     <div className="aspect-[9/16] max-w-[320px] mx-auto bg-black rounded-[2.5rem] border-[10px] border-[#1a1a1a] shadow-2xl relative overflow-hidden flex items-center justify-center">
@@ -260,7 +377,6 @@ const Dashboard = () => {
                       </div>
                     </Card>
                   </div>
-
                   <div className="space-y-6">
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Captions</CardTitle></CardHeader>
@@ -275,7 +391,6 @@ const Dashboard = () => {
                         ))}
                       </CardContent>
                     </Card>
-
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Styles</CardTitle></CardHeader>
                       <CardContent className="grid grid-cols-2 gap-2">
@@ -287,7 +402,6 @@ const Dashboard = () => {
                         ))}
                       </CardContent>
                     </Card>
-
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI Assist</CardTitle></CardHeader>
                       <CardContent className="space-y-2">
@@ -321,8 +435,8 @@ const Dashboard = () => {
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {[
-                    { label: "Total Videos", value: "12", icon: Video, change: "+2 this week" },
-                    { label: "Total Clips", value: "48", icon: Zap, change: "+12 this week" },
+                    { label: "Total Videos", value: projects.length.toString(), icon: Video, change: `+${projects.length} total` },
+                    { label: "Total Clips", value: clips.length.toString() || "48", icon: Zap, change: "+12 this week" },
                     { label: "Est. Views", value: "125.4K", icon: TrendingUp, change: "+18% vs last week" },
                     { label: "Time Saved", value: "14.5h", icon: Clock, change: "+2.1h this week" },
                   ].map((stat, i) => (
@@ -356,6 +470,9 @@ const Dashboard = () => {
                                 placeholder="YouTube, Vimeo, or Direct URL" 
                                 className="bg-white/5 border-white/10 pl-9 h-12"
                                 disabled={isAnalyzing}
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
                               />
                             </div>
                             <Button 
@@ -374,6 +491,12 @@ const Dashboard = () => {
                             </Button>
                           </div>
                           
+                          {error && (
+                            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+                              {error}
+                            </p>
+                          )}
+                          
                           {isAnalyzing && (
                             <motion.div 
                               initial={{ opacity: 0, height: 0 }}
@@ -383,7 +506,7 @@ const Dashboard = () => {
                               <div className="flex justify-between text-xs font-medium">
                                 <span className="flex items-center gap-2">
                                   <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                                  AI is identifying viral hooks...
+                                  {analyzeMessage}
                                 </span>
                                 <span>{analyzeProgress}%</span>
                               </div>
@@ -393,6 +516,50 @@ const Dashboard = () => {
                                   animate={{ width: `${analyzeProgress}%` }}
                                   className="h-full bg-white" 
                                 />
+                              </div>
+                            </motion.div>
+                          )}
+
+                          {/* Generated Clips */}
+                          {!isAnalyzing && clips.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="space-y-4 pt-4 border-t border-white/5"
+                            >
+                              <h3 className="text-sm font-semibold">Generated Clips ({clips.length})</h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {clips.map((clip) => (
+                                  <Card key={clip.id} className="bg-white/[0.02] border-white/5 overflow-hidden group">
+                                    <div className="aspect-video relative">
+                                      <img 
+                                        src={clip.thumbnail} 
+                                        alt={clip.title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Button size="icon" variant="secondary" className="rounded-full">
+                                          <Play className="w-4 h-4 fill-white" />
+                                        </Button>
+                                      </div>
+                                      <Badge className="absolute top-2 right-2 bg-black/60 backdrop-blur-md border-white/10">
+                                        {clip.viralityScore}% Viral
+                                      </Badge>
+                                    </div>
+                                    <div className="p-4 space-y-2">
+                                      <h4 className="text-sm font-semibold truncate">{clip.title}</h4>
+                                      <p className="text-xs text-muted-foreground line-clamp-2">{clip.hook}</p>
+                                      <div className="flex gap-2 pt-2">
+                                        <Button size="sm" variant="outline" className="flex-1 text-[10px] h-8">
+                                          Preview
+                                        </Button>
+                                        <Button size="sm" className="flex-1 text-[10px] h-8 bg-white text-black hover:bg-white/90">
+                                          Export
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </Card>
+                                ))}
                               </div>
                             </motion.div>
                           )}
@@ -416,30 +583,34 @@ const Dashboard = () => {
                         <Button variant="link" className="text-sm text-muted-foreground">View all</Button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {[1, 2].map(i => (
-                          <Card 
-                            key={i} 
-                            onClick={() => setSelectedProject(i)}
-                            className="bg-white/[0.02] border-white/5 group cursor-pointer overflow-hidden"
-                          >
-                            <div className="aspect-video relative">
-                              <img 
-                                src={`https://images.unsplash.com/photo-${1611162617474 + i}-5b21e879e113?auto=format&fit=crop&q=80&w=800`} 
-                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                alt="Video thumbnail"
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                                <Button size="icon" variant="secondary" className="rounded-full"><Play className="w-4 h-4 fill-white" /></Button>
-                                <Button size="icon" variant="secondary" className="rounded-full"><ExternalLink className="w-4 h-4" /></Button>
+                        {projects.length === 0 ? (
+                          <p className="text-sm text-muted-foreground col-span-2">No projects yet. Paste a URL above to get started.</p>
+                        ) : (
+                          projects.slice(0, 4).map((project) => (
+                            <Card 
+                              key={project.id} 
+                              onClick={() => setSelectedProject(project.id)}
+                              className="bg-white/[0.02] border-white/5 group cursor-pointer overflow-hidden"
+                            >
+                              <div className="aspect-video relative">
+                                <img 
+                                  src={project.thumbnail} 
+                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                  alt="Video thumbnail"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                  <Button size="icon" variant="secondary" className="rounded-full"><Play className="w-4 h-4 fill-white" /></Button>
+                                  <Button size="icon" variant="secondary" className="rounded-full"><ExternalLink className="w-4 h-4" /></Button>
+                                </div>
+                                <Badge className="absolute top-2 right-2 bg-black/60 backdrop-blur-md border-white/10">{project.clipCount} Clips</Badge>
                               </div>
-                              <Badge className="absolute top-2 right-2 bg-black/60 backdrop-blur-md border-white/10">4 Clips</Badge>
-                            </div>
-                            <div className="p-4">
-                              <h3 className="text-sm font-semibold truncate mb-1">Impact of AI on Modern SaaS Design {i}</h3>
-                              <p className="text-xs text-muted-foreground">Processed 2 days ago</p>
-                            </div>
-                          </Card>
-                        ))}
+                              <div className="p-4">
+                                <h3 className="text-sm font-semibold truncate mb-1">{project.title}</h3>
+                                <p className="text-xs text-muted-foreground">Processed {formatDate(project.createdAt)}</p>
+                              </div>
+                            </Card>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
@@ -486,9 +657,9 @@ const Dashboard = () => {
                             </div>
                             <div>
                               <p className="text-xs font-medium">Render completed</p>
-                              <p className="text-[10px] text-muted-foreground">"The Future of Work" - Clip #2</p>
+                              <p className="text-[10px] text-muted-foreground">"The Future of Work" - Clip #{i}</p>
                             </div>
-                            <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">2m ago</span>
+                            <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{i}m ago</span>
                           </div>
                         ))}
                       </CardContent>
@@ -498,7 +669,7 @@ const Dashboard = () => {
               </motion.div>
             )}
 
-            {activeTab === "analytics" && (
+            {activeTab === "analytics" && analytics && (
               <motion.div
                 key="analytics"
                 initial={{ opacity: 0, y: 10 }}
@@ -513,10 +684,9 @@ const Dashboard = () => {
                     <Button variant="outline" size="sm" className="flex-1 sm:flex-none">Export Data</Button>
                   </div>
                 </div>
-
                 <Card className="bg-white/[0.02] border-white/5 p-4 lg:p-8 overflow-x-auto">
                   <div className="min-w-[500px] h-[200px] flex items-end gap-2">
-                    {[40, 60, 45, 90, 65, 80, 55, 70, 85, 40, 50, 75].map((h, i) => (
+                    {analytics.chartData.map((h: number, i: number) => (
                       <div key={i} className="flex-1 flex flex-col gap-2 items-center group">
                         <motion.div 
                           initial={{ height: 0 }}
@@ -529,29 +699,24 @@ const Dashboard = () => {
                     ))}
                   </div>
                 </Card>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card className="bg-white/[0.02] border-white/5 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Top Performing Clips</h3>
-                    {[1, 2, 3].map(i => (
+                    {analytics.topClips.map((clip: any, i: number) => (
                       <div key={i} className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">How to build a $100M SaaS</p>
-                          <p className="text-[10px] text-muted-foreground">24.5k views • 12% engagement</p>
+                          <p className="text-sm font-medium truncate">{clip.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views â¢ {clip.engagement} engagement</p>
                         </div>
-                        <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">+4.2%</Badge>
+                        <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
                     ))}
                   </Card>
                   <Card className="bg-white/[0.02] border-white/5 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Platform Distribution</h3>
                     <div className="space-y-4">
-                      {[
-                        { platform: "TikTok", val: 65, color: "bg-pink-500" },
-                        { platform: "Instagram", val: 25, color: "bg-purple-500" },
-                        { platform: "YouTube", val: 10, color: "bg-red-500" }
-                      ].map(p => (
+                      {analytics.platformDistribution.map((p: any) => (
                         <div key={p.platform} className="space-y-1">
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">{p.platform}</span>
@@ -580,26 +745,30 @@ const Dashboard = () => {
                   <h2 className="text-2xl font-bold">Export History</h2>
                   <Button variant="outline" size="sm" className="w-full sm:w-auto">Clear History</Button>
                 </div>
-
                 <div className="grid grid-cols-1 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <Card key={i} className="bg-white/[0.02] border-white/5 p-4 flex flex-col sm:flex-row items-center gap-4">
-                      <div className="w-full sm:w-32 aspect-video bg-white/10 rounded-lg shrink-0 overflow-hidden">
-                        <img 
-                          src={`https://images.unsplash.com/photo-${1611162617474 + i}-5b21e879e113?auto=format&fit=crop&q=80&w=400`} 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1 text-center sm:text-left">
-                        <h4 className="font-bold text-sm">Clip #00{i}: The Power of AI Automation</h4>
-                        <p className="text-xs text-muted-foreground">Exported 2 hours ago • MP4 • 1080p</p>
-                      </div>
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
-                        <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Share2 className="w-3.5 h-3.5" /> Share</Button>
-                      </div>
-                    </Card>
-                  ))}
+                  {history.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No exports yet.</p>
+                  ) : (
+                    history.map((item, i) => (
+                      <Card key={item.id} className="bg-white/[0.02] border-white/5 p-4 flex flex-col sm:flex-row items-center gap-4">
+                        <div className="w-full sm:w-32 aspect-video bg-white/10 rounded-lg shrink-0 overflow-hidden">
+                          <img 
+                            src={item.thumbnail} 
+                            className="w-full h-full object-cover"
+                            alt={item.title}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1 text-center sm:text-left">
+                          <h4 className="font-bold text-sm">{item.title}</h4>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} â¢ {item.format} â¢ {item.resolution}</p>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                          <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
+                          <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Share2 className="w-3.5 h-3.5" /> Share</Button>
+                        </div>
+                      </Card>
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}
@@ -631,7 +800,6 @@ const Dashboard = () => {
                       ))}
                     </nav>
                   </div>
-
                   <div className="lg:col-span-3 space-y-6">
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader>
@@ -652,7 +820,6 @@ const Dashboard = () => {
                         <Button className="bg-white text-black hover:bg-white/90">Save Changes</Button>
                       </CardContent>
                     </Card>
-
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader>
                         <CardTitle className="text-lg">Subscription Plan</CardTitle>
@@ -673,7 +840,6 @@ const Dashboard = () => {
                         </div>
                       </CardContent>
                     </Card>
-
                     <Card className="bg-white/[0.02] border-white/5">
                       <CardHeader>
                         <CardTitle className="text-lg">Danger Zone</CardTitle>
