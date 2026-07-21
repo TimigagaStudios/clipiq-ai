@@ -215,5 +215,5 @@ function generateMockClips(url) {
 }
 
 app.listen(PORT, () => {
-  console.log(`ð ClipIQ AI backend running on http://localhost:${PORT}`);
+  console.log(`Ã°ÂÂÂ ClipIQ AI backend running on http://localhost:${PORT}`);
 });
