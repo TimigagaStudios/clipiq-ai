@@ -707,7 +707,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views â¢ {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views Ã¢ÂÂ¢ {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -760,7 +760,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} â¢ {item.format} â¢ {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} Ã¢ÂÂ¢ {item.format} Ã¢ÂÂ¢ {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
