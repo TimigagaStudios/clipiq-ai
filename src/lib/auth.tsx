@@ -37,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isConfigured) {
-      setLoading(false);
       return;
     }
     let active = true;
