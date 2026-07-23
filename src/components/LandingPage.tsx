@@ -430,7 +430,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#" className="hover:text-white">Terms</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            Ã‚Â© 2024 ClipIQ AI. All rights reserved.
+            ÃÂ© 2024 ClipIQ AI. All rights reserved.
           </p>
         </div>
       </footer>
