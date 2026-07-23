@@ -17,7 +17,7 @@ export function Protected({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-sm text-zinc-400">
-        <span className="animate-pulse">Loadingâ€¦</span>
+        <span className="animate-pulse">Loading…</span>
       </div>
     );
   }
