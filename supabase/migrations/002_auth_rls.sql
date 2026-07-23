@@ -36,7 +36,6 @@ create trigger trg_on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- 2) Tighten ownership: user_id NOT NULL + FK to auth.users on tenant tables.
---    (profiles.id IS the auth user id, so it gets the FK too.)
 alter table public.profiles add constraint fk_profiles_user
   foreign key (id) references auth.users(id) on delete cascade;
 
@@ -57,7 +56,6 @@ alter table public.exports add constraint fk_exports_user
   foreign key (user_id) references auth.users(id) on delete cascade;
 
 -- 3) Row Level Security policies: each user sees / edits only their own rows.
---    (RLS was enabled in 001; the policies are added here.)
 create policy "profiles_self_select" on public.profiles
   for select using (auth.uid() = id);
 create policy "profiles_self_update" on public.profiles
