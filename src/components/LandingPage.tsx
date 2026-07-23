@@ -46,7 +46,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" className="text-xs sm:text-sm font-medium px-2 sm:px-4">Log in</Button>
+            <Button variant="ghost" onClick={onGetStarted} className="text-xs sm:text-sm font-medium px-2 sm:px-4">Log in</Button>
             <Button onClick={onGetStarted} className="rounded-full px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm">Get Started</Button>
           </div>
         </div>
@@ -430,7 +430,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#" className="hover:text-white">Terms</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            ÃÂ© 2024 ClipIQ AI. All rights reserved.
+            Ã‚Â© 2024 ClipIQ AI. All rights reserved.
           </p>
         </div>
       </footer>
