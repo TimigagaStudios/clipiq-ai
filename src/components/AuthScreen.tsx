@@ -5,7 +5,7 @@ import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 
 export function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resendConfirmation } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +19,16 @@ export function AuthScreen() {
     try {
       if (mode === "signin") {
         const { error } = await signIn(email, password);
-        if (error) setMessage({ type: "error", text: error });
+        if (error) {
+          if (/confirm/i.test(error)) {
+            setMessage({
+              type: "info",
+              text: "That account needs email confirmation first. Check your inbox, or resend the confirmation email below.",
+            });
+          } else {
+            setMessage({ type: "error", text: error });
+          }
+        }
       } else {
         const { error, needsEmailConfirmation } = await signUp(email, password);
         if (error) {
@@ -31,11 +40,30 @@ export function AuthScreen() {
           });
           setMode("signin");
         } else {
-          setMessage({ type: "info", text: "Account created — you're signed in." });
+          setMessage({ type: "info", text: "Account created â you're signed in." });
         }
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onResend() {
+    if (!email.trim()) {
+      setMessage({ type: "info", text: "Enter your email above, then resend." });
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    const { error, sent } = await resendConfirmation(email.trim());
+    setBusy(false);
+    if (error) {
+      setMessage({ type: "error", text: error });
+    } else if (sent) {
+      setMessage({
+        type: "info",
+        text: "If that email isn't confirmed yet, a new confirmation link is on its way.",
+      });
     }
   }
 
@@ -74,10 +102,25 @@ export function AuthScreen() {
               </p>
             )}
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+              {busy ? "Please waitâŚ" : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-zinc-400">
+
+          {mode === "signin" && (
+            <p className="mt-3 text-center text-xs text-zinc-500">
+              Waiting on a confirmation email?{" "}
+              <button
+                type="button"
+                onClick={onResend}
+                disabled={busy}
+                className="text-violet-400 underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                Resend it
+              </button>
+            </p>
+          )}
+
+          <p className="mt-3 text-center text-sm text-zinc-400">
             {mode === "signin" ? "No account? " : "Already have one? "}
             <button
               type="button"
