@@ -65,7 +65,11 @@ export function AuthScreen() {
               minLength={6}
             />
             {message && (
-              <p className={message.type === "error" ? "text-sm text-red-400" : "text-sm text-emerald-400"}>
+              <p
+                className={
+                  message.type === "error" ? "text-sm text-red-400" : "text-sm text-emerald-400"
+                }
+              >
                 {message.text}
               </p>
             )}
