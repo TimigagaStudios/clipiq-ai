@@ -40,7 +40,7 @@ import { useAuth } from "../lib/auth";
 import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
-import { clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus } from "../lib/dashboard-data";
+import { clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus, retryUserJob } from "../lib/dashboard-data";
 import { getClipSignedUrl } from "../lib/clip-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -71,6 +71,7 @@ const Dashboard = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [analyzeMessage, setAnalyzeMessage] = useState("AI is identifying viral hooks...");
+  const [jobStatus, setJobStatus] = useState<string>("idle");
   const [url, setUrl] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [savedJobId, setSavedJobId] = useState<string | null>(null);
@@ -174,6 +175,7 @@ const Dashboard = () => {
       setJobId(activeJob.externalJobId);
       setAnalyzeProgress(activeJob.progress);
       setAnalyzeMessage(activeJob.message);
+      setJobStatus(activeJob.status);
       setIsAnalyzing(true);
     }).catch((err) => console.error("Failed to resume active job:", err));
   }, [isConfigured, user]);
@@ -190,6 +192,7 @@ const Dashboard = () => {
         if (!data) return;
         setAnalyzeProgress(data.progress);
         setAnalyzeMessage(data.message);
+        setJobStatus(data.status);
         if (data.status === "completed") {
           setIsAnalyzing(false);
           if (isConfigured && user && savedJobId) {
@@ -199,7 +202,7 @@ const Dashboard = () => {
             await fetchClips(jobId);
           }
           if (pollingRef.current) clearInterval(pollingRef.current);
-        } else if (data.status === "failed") {
+        } else if (data.status === "failed" || data.status === "dead_letter") {
           setIsAnalyzing(false);
           setError(data.error || data.message || "Analysis failed. Please try again.");
           if (pollingRef.current) clearInterval(pollingRef.current);
@@ -256,6 +259,20 @@ const Dashboard = () => {
     }
   }
 
+  const handleRetryJob = async () => {
+    if (!savedJobId || !isConfigured || !user) return;
+    try {
+      await retryUserJob(savedJobId);
+      setError("");
+      setJobStatus("queued");
+      setAnalyzeProgress(0);
+      setAnalyzeMessage("Queued for retry...");
+      setIsAnalyzing(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not retry this job.");
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!url.trim()) {
       setError("Please enter a video URL");
@@ -265,6 +282,7 @@ const Dashboard = () => {
     setIsAnalyzing(true);
     setAnalyzeProgress(0);
     setAnalyzeMessage("Starting analysis...");
+    setJobStatus("queued");
     setClips([]);
 
     try {
@@ -755,9 +773,12 @@ const Dashboard = () => {
                           </div>
                           
                           {error && (
-                            <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
-                              {error}
-                            </p>
+                            <div className="flex flex-col gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:flex-row sm:items-center sm:justify-between">
+                              <p>{error}</p>
+                              {isConfigured && user && savedJobId && (jobStatus === "failed" || jobStatus === "dead_letter") && (
+                                <Button size="sm" variant="outline" onClick={() => void handleRetryJob()} className="shrink-0 border-red-400/30 text-red-200 hover:bg-red-400/10">Retry analysis</Button>
+                              )}
+                            </div>
                           )}
                           
                           {isAnalyzing && (
