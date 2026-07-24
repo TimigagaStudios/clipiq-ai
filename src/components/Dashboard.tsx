@@ -227,7 +227,7 @@ const Dashboard = () => {
                 <div className="h-full w-full bg-gradient-to-r from-brand to-brand-2" />
               </div>
             </div>
-            <Button className="w-full text-xs h-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Upgrade Pro</Button>
+            <Button className="w-full text-xs h-8 hover:brightness-105">Upgrade Pro</Button>
           </div>
         </div>
       </aside>
@@ -277,7 +277,7 @@ const Dashboard = () => {
                   <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full w-[82%] bg-gradient-to-r from-brand to-brand-2" />
                   </div>
-                  <Button className="w-full bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Upgrade</Button>
+                  <Button className="w-full hover:brightness-105">Upgrade</Button>
                 </div>
               </div>
             </motion.aside>
@@ -338,7 +338,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" className="flex-1 sm:flex-none text-xs">Preview</Button>
-                    <Button className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg text-xs font-bold">Export</Button>
+                    <Button className="flex-1 sm:flex-none hover:brightness-105 text-xs font-bold">Export</Button>
                   </div>
                 </div>
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
@@ -478,7 +478,7 @@ const Dashboard = () => {
                             <Button 
                               onClick={handleAnalyze} 
                               disabled={isAnalyzing}
-                              className="h-12 px-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg gap-2 min-w-[120px]"
+                              className="h-12 px-8 hover:brightness-105 gap-2 min-w-[120px]"
                             >
                               {isAnalyzing ? (
                                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -553,7 +553,7 @@ const Dashboard = () => {
                                         <Button size="sm" variant="outline" className="flex-1 text-[10px] h-8">
                                           Preview
                                         </Button>
-                                        <Button size="sm" className="flex-1 text-[10px] h-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">
+                                        <Button size="sm" className="flex-1 text-[10px] h-8 hover:brightness-105">
                                           Export
                                         </Button>
                                       </div>
@@ -707,7 +707,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views Ã¢ÂÂ¢ {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÃÂ¢ÃÂÃÂ¢ {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -760,7 +760,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} Ã¢ÂÂ¢ {item.format} Ã¢ÂÂ¢ {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÃÂ¢ÃÂÃÂ¢ {item.format} ÃÂ¢ÃÂÃÂ¢ {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -817,7 +817,7 @@ const Dashboard = () => {
                             <Input placeholder="john@example.com" className="bg-white/5 border-white/10" />
                           </div>
                         </div>
-                        <Button className="bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Save Changes</Button>
+                        <Button className="hover:brightness-105">Save Changes</Button>
                       </CardContent>
                     </Card>
                     <Card className="bg-white/[0.03] border-white/10">
