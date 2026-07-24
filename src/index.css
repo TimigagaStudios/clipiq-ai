@@ -20,7 +20,13 @@
   --color-border: #27272a;
   --color-input: #27272a;
   --color-ring: #d4d4d8;
-  
+
+  /* Brand accent (vibrant on dark): electric violet -> fuchsia -> cyan */
+  --color-brand: #7c5cff;
+  --color-brand-2: #ff4d8d;
+  --color-brand-3: #22d3ee;
+  --color-brand-foreground: #ffffff;
+
   --radius-lg: 0.75rem;
   --radius-md: calc(0.75rem - 2px);
   --radius-sm: calc(0.75rem - 4px);
@@ -37,16 +43,28 @@
 
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(124, 92, 255, 0.07), rgba(255, 77, 141, 0.03));
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(124, 92, 255, 0.18);
+    box-shadow: 0 8px 40px -16px rgba(124, 92, 255, 0.35);
   }
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-white via-white/90 to-white/50;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand via-brand-2 to-brand-3;
   }
-  
   .glow {
-    box-shadow: 0 0 20px -5px rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 24px -4px rgba(124, 92, 255, 0.45);
+  }
+  /* CSS recreation of the purple "aurora" reference image: soft blurred
+     violet/magenta blobs on near-black. Use as an absolutely-positioned layer
+     inside a `relative overflow-hidden` parent (e.g. <div class="aurora absolute -inset-[15%]" />). */
+  .aurora {
+    background:
+      radial-gradient(45% 42% at 24% 72%, rgba(168, 40, 255, 0.95), transparent 60%),
+      radial-gradient(32% 30% at 38% 52%, rgba(232, 170, 255, 0.9), transparent 55%),
+      radial-gradient(55% 52% at 76% 46%, rgba(91, 33, 182, 0.85), transparent 65%),
+      radial-gradient(60% 55% at 62% 14%, rgba(124, 92, 255, 0.55), transparent 60%),
+      #0a0414;
+    filter: blur(34px) saturate(130%);
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
