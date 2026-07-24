@@ -1,0 +1,13 @@
+# Local dependencies and build output
+node_modules/
+dist/
+
+# Local secrets â€” never commit real environment files
+.env
+.env.*
+!.env.example
+!worker/.env.example
+.env.worker
+
+# Local worker output
+worker-output/
