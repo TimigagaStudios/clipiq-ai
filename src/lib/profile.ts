@@ -40,7 +40,9 @@ export function useProfile() {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void Promise.resolve().then(() => refresh());
+  }, [refresh]);
 
   const save = useCallback(async (updates: Partial<Profile>) => {
     if (!user) return { error: "You need to sign in first." };
