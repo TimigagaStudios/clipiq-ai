@@ -21,13 +21,15 @@ import {
   X,
   CreditCard,
   Download,
-  Share2
+  Share2,
+  LogOut
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/Card";
 import { Badge } from "./ui/Badge";
 import { cn } from "../utils/cn";
+import { useAuth } from "../lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -66,6 +68,8 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const { isConfigured, user, signOut } = useAuth();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load pending URL from landing page and fetch initial data
@@ -316,7 +320,35 @@ const Dashboard = () => {
               <Bell className="w-5 h-5" />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
             </Button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand to-brand-2 border border-white/20 shrink-0" />
+            {isConfigured ? (
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAccountMenuOpen((open) => !open)}
+                  aria-label="Open account menu"
+                  aria-expanded={isAccountMenuOpen}
+                  className="h-9 w-9 rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 shadow-[0_5px_12px_rgba(4,2,10,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                />
+                {isAccountMenuOpen && (
+                  <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-white/10 bg-[#151022] p-2 shadow-[0_16px_35px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)]">
+                    <p className="truncate px-3 py-2 text-xs text-muted-foreground">{user?.email ?? "Signed in"}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAccountMenuOpen(false);
+                        void signOut();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-white transition hover:bg-white/8"
+                    >
+                      <LogOut className="h-4 w-4 text-brand-2" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="h-8 w-8 rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 shrink-0" />
+            )}
           </div>
         </header>
 
