@@ -63,14 +63,16 @@ async function notifyUser(userId, title, detail) {
   });
 }
 
-async function updateJob(id, update) {
+async function updateJob(id, update, notify = false) {
   await supabase(`jobs?id=eq.${encodeURIComponent(id)}`, {
-    method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...update, worker_id: WORKER_ID, locked_at: new Date().toISOString() }),
+    method: "PATCH", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ ...update, worker_id: WORKER_ID, locked_at: update.locked_at ?? new Date().toISOString() }),
   });
+  if (notify && currentJob) await notifyUser(currentJob.user_id, "ClipIQ processing update", update.message);
 }
 
 async function downloadSource(url, directory) {
-  return downloadWithAdapter(url, directory, (update) => updateJob(currentJob.id, update), MAX_SOURCE_BYTES);
+  return downloadWithAdapter(url, directory, (update) => updateJob(currentJob.id, update, true), MAX_SOURCE_BYTES);
 }
 
 async function mediaInfo(input) {
@@ -81,14 +83,14 @@ async function mediaInfo(input) {
 }
 
 async function extractAudio(input, directory) {
-  await updateJob(currentJob.id, { status: "extracting_audio", stage: "extracting_audio", progress: 35, message: "Extracting audio..." });
+  await updateJob(currentJob.id, { status: "extracting_audio", stage: "extracting_audio", progress: 35, message: "Extracting audio..." }, true);
   const audio = join(directory, "audio.wav");
   await exec("ffmpeg", ["-y", "-i", input, "-vn", "-ac", "1", "-ar", "16000", audio]);
   return audio;
 }
 
 async function transcribe(audio, directory) {
-  await updateJob(currentJob.id, { status: "transcribing", stage: "transcribing", progress: 50, message: "Generating transcript..." });
+  await updateJob(currentJob.id, { status: "transcribing", stage: "transcribing", progress: 50, message: "Generating transcript..." }, true);
   const transcript = await transcribeAudio(audio);
   await writeFile(join(directory, "transcript.txt"), transcript);
   return transcript;
@@ -108,7 +110,7 @@ async function selectCandidates(duration, transcript) {
 }
 
 async function renderCandidates(input, candidates, directory) {
-  await updateJob(currentJob.id, { status: "generating_clips", stage: "generating_clips", progress: 75, message: "Rendering candidate clips..." });
+  await updateJob(currentJob.id, { status: "generating_clips", stage: "generating_clips", progress: 75, message: "Rendering candidate clips..." }, true);
   const rendered = [];
   for (let index = 0; index < candidates.length; index += 1) {
     const candidate = candidates[index];
@@ -141,6 +143,15 @@ async function saveResults(job, rendered) {
   await notifyUser(job.user_id, "Analysis complete", "Your ClipIQ candidate clips are ready to review.");
 }
 
+function classifyError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  if (/invalid|unsupported|size limit|url is required|not found|401|403/.test(lower)) return { code: "INPUT_INVALID", retryable: false, message };
+  if (/gemini|groq|openrouter|rate|429|timeout|network|fetch failed|storage|supabase|econn|ffmpeg|ffprobe/.test(lower)) return { code: "TRANSIENT_PROCESSING", retryable: true, message };
+  if (/transcrib|whisper/.test(lower)) return { code: "TRANSCRIPTION_FAILED", retryable: false, message };
+  return { code: "PROCESSING_FAILED", retryable: true, message };
+}
+
 async function processJob(job) {
   const directory = await mkdtemp(join(tmpdir(), "clipiq-"));
   currentJob = job;
@@ -149,17 +160,27 @@ async function processJob(job) {
     const duration = await mediaInfo(input);
     const audio = await extractAudio(input, directory);
     const transcript = await transcribe(audio, directory);
-    await updateJob(job.id, { status: "analyzing", stage: "analyzing", progress: 65, message: "Selecting clip candidates..." });
+    await updateJob(job.id, { status: "analyzing", stage: "analyzing", progress: 65, message: "Selecting clip candidates..." }, true);
     const candidates = await selectCandidates(duration, transcript);
     const rendered = await renderCandidates(input, candidates, directory);
     await saveResults(job, rendered);
     console.log(`[${WORKER_ID}] completed ${job.id}`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await supabase(`jobs?id=eq.${encodeURIComponent(job.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed", stage: "failed", message, error: message, worker_id: WORKER_ID, locked_at: null }) });
-    await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed" }) });
-    await notifyUser(job.user_id, "Analysis failed", message);
-    console.error(`[${WORKER_ID}] failed ${job.id}: ${message}`);
+    const classified = classifyError(error);
+    const attempts = Number(job.processing_attempts || 1);
+    const maxAttempts = Number(job.max_attempts || 3);
+    const retryable = classified.retryable && attempts < maxAttempts;
+    const status = retryable ? "queued" : "dead_letter";
+    const stage = retryable ? "queued" : "dead_letter";
+    await supabase(`jobs?id=eq.${encodeURIComponent(job.id)}`, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status, stage, progress: retryable ? 0 : job.progress, message: retryable ? `Retry scheduled (${attempts}/${maxAttempts})` : `Dead letter: ${classified.message}`, error: classified.message, last_error_code: classified.code, dead_lettered_at: retryable ? null : new Date().toISOString(), worker_id: WORKER_ID, locked_at: null, timeout_at: null }),
+    });
+    if (!retryable) {
+      await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed" }) });
+    }
+    await notifyUser(job.user_id, retryable ? "Analysis will retry" : "Analysis moved to review", retryable ? `${classified.code}: retry ${attempts}/${maxAttempts}` : `${classified.code}: ${classified.message}`);
+    console.error(`[${WORKER_ID}] ${status} ${job.id}: ${classified.code} ${classified.message}`);
   } finally {
     currentJob = null;
     await rm(directory, { recursive: true, force: true });
