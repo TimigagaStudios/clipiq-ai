@@ -18,22 +18,27 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
     const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
-      // Soft UI keeps the ClipIQ violet/fuchsia palette but gives controls a
-      // tactile raised surface: a subtle top-left highlight + soft outer depth.
+      /*
+       * Dark-theme adaptation of the selected Soft UI reference:
+       * a restrained, almost-solid surface; a fine upper highlight; and one
+       * broad, low-contrast shadow below. This intentionally avoids a glossy
+       * or neon treatment while retaining ClipIQ's violet brand identity.
+       */
       default:
-        "border border-white/10 bg-gradient-to-br from-[#8b70ff] to-[#6b4ce7] text-brand-foreground shadow-[8px_8px_18px_rgba(3,2,8,0.78),-5px_-5px_16px_rgba(105,76,175,0.2),inset_1px_1px_0_rgba(255,255,255,0.24)] hover:brightness-110 hover:shadow-[10px_10px_22px_rgba(3,2,8,0.82),-5px_-5px_18px_rgba(124,92,255,0.3),inset_1px_1px_0_rgba(255,255,255,0.28)] active:shadow-[inset_5px_5px_12px_rgba(42,24,103,0.52),inset_-3px_-3px_10px_rgba(177,156,255,0.2)]",
+        "border border-white/14 bg-[#765bd0] text-white shadow-[0_11px_20px_rgba(4,2,10,0.64),0_4px_7px_rgba(49,31,105,0.42),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_-1px_1px_rgba(43,25,99,0.24)] hover:bg-[#8065dc] hover:shadow-[0_13px_24px_rgba(4,2,10,0.68),0_5px_8px_rgba(60,38,122,0.45),inset_0_1px_1px_rgba(255,255,255,0.3),inset_0_-1px_1px_rgba(43,25,99,0.22)] active:bg-[#694ebd] active:shadow-[inset_0_4px_8px_rgba(47,28,105,0.48),inset_0_-1px_1px_rgba(255,255,255,0.13)]",
+      // Kept for intentional hero-gradient use elsewhere; default is the Soft UI primary.
       gradient:
-        "border border-white/10 bg-gradient-to-r from-brand via-[#a85cf5] to-brand-2 text-white shadow-[8px_8px_20px_rgba(3,2,8,0.78),-5px_-5px_16px_rgba(126,77,196,0.22),inset_1px_1px_0_rgba(255,255,255,0.24)] hover:brightness-110 hover:shadow-[10px_10px_24px_rgba(3,2,8,0.82),-5px_-5px_18px_rgba(255,77,141,0.2),inset_1px_1px_0_rgba(255,255,255,0.28)] active:shadow-[inset_5px_5px_12px_rgba(82,28,116,0.45),inset_-3px_-3px_10px_rgba(255,181,218,0.18)]",
+        "border border-white/14 bg-gradient-to-r from-[#765bd0] to-[#b75bc9] text-white shadow-[0_11px_20px_rgba(4,2,10,0.64),0_4px_7px_rgba(92,41,122,0.35),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(59,29,105,0.2)] hover:brightness-105 active:shadow-[inset_0_4px_8px_rgba(72,29,100,0.42),inset_0_-1px_1px_rgba(255,255,255,0.12)]",
       glass:
-        "border border-white/10 bg-[#120d20] text-foreground shadow-[7px_7px_16px_rgba(3,2,8,0.72),-4px_-4px_13px_rgba(89,65,142,0.17),inset_1px_1px_0_rgba(255,255,255,0.11)] hover:border-brand/35 hover:text-white hover:bg-[#18102a] active:shadow-[inset_4px_4px_10px_rgba(3,2,8,0.7),inset_-3px_-3px_8px_rgba(99,72,156,0.16)]",
+        "border border-white/10 bg-[#171126] text-foreground shadow-[0_9px_18px_rgba(4,2,10,0.58),0_3px_6px_rgba(80,58,135,0.22),inset_0_1px_1px_rgba(255,255,255,0.12),inset_0_-1px_1px_rgba(0,0,0,0.22)] hover:bg-[#1d1530] hover:text-white active:shadow-[inset_0_3px_7px_rgba(3,2,8,0.6),inset_0_-1px_1px_rgba(255,255,255,0.08)]",
       neon:
-        "border border-brand/55 bg-[#17102a] text-white shadow-[0_0_20px_-7px_rgba(124,92,255,0.8),7px_7px_16px_rgba(3,2,8,0.7),inset_1px_1px_0_rgba(255,255,255,0.13)] hover:border-brand-2/70 hover:shadow-[0_0_26px_-5px_rgba(255,77,141,0.82),8px_8px_18px_rgba(3,2,8,0.75),inset_1px_1px_0_rgba(255,255,255,0.16)]",
+        "border border-brand/55 bg-[#171126] text-white shadow-[0_0_18px_-8px_rgba(124,92,255,0.9),0_9px_18px_rgba(4,2,10,0.58),inset_0_1px_1px_rgba(255,255,255,0.13)] hover:border-brand-2/70 hover:bg-[#211637]",
       destructive:
-        "border border-red-300/15 bg-[#401420] text-destructive-foreground shadow-[7px_7px_16px_rgba(3,2,8,0.72),-4px_-4px_12px_rgba(135,42,64,0.16),inset_1px_1px_0_rgba(255,255,255,0.11)] hover:bg-[#591a2a] active:shadow-[inset_4px_4px_10px_rgba(42,5,13,0.65),inset_-3px_-3px_8px_rgba(151,52,76,0.15)]",
+        "border border-red-300/15 bg-[#64243a] text-destructive-foreground shadow-[0_9px_18px_rgba(4,2,10,0.58),0_3px_6px_rgba(125,39,65,0.3),inset_0_1px_1px_rgba(255,255,255,0.16),inset_0_-1px_1px_rgba(58,11,24,0.25)] hover:bg-[#743047] active:shadow-[inset_0_3px_7px_rgba(52,7,19,0.6)]",
       outline:
-        "border border-white/12 bg-[#120d20] text-foreground shadow-[7px_7px_16px_rgba(3,2,8,0.72),-4px_-4px_13px_rgba(89,65,142,0.17),inset_1px_1px_0_rgba(255,255,255,0.11)] hover:border-brand/40 hover:bg-[#18102a] hover:text-white active:shadow-[inset_4px_4px_10px_rgba(3,2,8,0.7),inset_-3px_-3px_8px_rgba(99,72,156,0.16)]",
+        "border border-white/12 bg-[#171126] text-foreground shadow-[0_9px_18px_rgba(4,2,10,0.58),0_3px_6px_rgba(80,58,135,0.22),inset_0_1px_1px_rgba(255,255,255,0.12),inset_0_-1px_1px_rgba(0,0,0,0.22)] hover:border-brand/40 hover:bg-[#1d1530] hover:text-white active:shadow-[inset_0_3px_7px_rgba(3,2,8,0.6),inset_0_-1px_1px_rgba(255,255,255,0.08)]",
       secondary:
-        "border border-white/10 bg-[#171126] text-foreground shadow-[6px_6px_14px_rgba(3,2,8,0.7),-4px_-4px_12px_rgba(89,65,142,0.15),inset_1px_1px_0_rgba(255,255,255,0.1)] hover:bg-[#1d1530] active:shadow-[inset_4px_4px_10px_rgba(3,2,8,0.65),inset_-3px_-3px_8px_rgba(99,72,156,0.14)]",
+        "border border-white/10 bg-[#211938] text-foreground shadow-[0_8px_16px_rgba(4,2,10,0.55),0_3px_5px_rgba(87,62,145,0.2),inset_0_1px_1px_rgba(255,255,255,0.1)] hover:bg-[#2a2046] active:shadow-[inset_0_3px_7px_rgba(3,2,8,0.55)]",
       ghost: "text-foreground hover:bg-white/5 hover:text-white",
       link: "text-brand underline-offset-4 hover:text-brand-2 hover:underline",
     };
