@@ -228,7 +228,7 @@ export function AuthScreen() {
             <button
               type="submit"
               disabled={busy}
-              className="soft-raised h-11 w-full rounded-xl bg-gradient-to-r from-brand to-brand-2 font-semibold text-white transition hover:brightness-110 active:shadow-[inset_5px_5px_12px_rgba(82,28,116,0.45),inset_-3px_-3px_10px_rgba(255,181,218,0.18)] disabled:opacity-60"
+              className="h-11 w-full rounded-xl border border-white/14 bg-[#765bd0] font-semibold text-white shadow-[0_11px_20px_rgba(4,2,10,0.64),0_4px_7px_rgba(49,31,105,0.42),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_-1px_1px_rgba(43,25,99,0.24)] transition hover:bg-[#8065dc] active:bg-[#694ebd] active:shadow-[inset_0_4px_8px_rgba(47,28,105,0.48),inset_0_-1px_1px_rgba(255,255,255,0.13)] disabled:opacity-60"
             >
               {busy ? "Please waitÃ¢â¬Â¦" : isSignup ? "Sign Up" : "Sign in"}
             </button>
