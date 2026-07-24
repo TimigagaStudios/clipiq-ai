@@ -3,6 +3,9 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { rankCandidates } from "./lib/ai-provider.mjs";
+import { transcribeAudio } from "./lib/transcriber.mjs";
+import { downloadSource as downloadWithAdapter } from "./lib/source-adapter.mjs";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
@@ -51,16 +54,7 @@ async function updateJob(id, update) {
 }
 
 async function downloadSource(url, directory) {
-  await updateJob(currentJob.id, { status: "downloading", stage: "downloading", progress: 20, message: "Downloading source video..." });
-  const response = await fetch(url, { redirect: "follow" });
-  if (!response.ok || !response.body) throw new Error(`Source download failed with HTTP ${response.status}`);
-  const contentLength = Number(response.headers.get("content-length") || 0);
-  if (contentLength > MAX_SOURCE_BYTES) throw new Error("Source video exceeds the configured size limit");
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.length > MAX_SOURCE_BYTES) throw new Error("Source video exceeds the configured size limit");
-  const input = join(directory, "source-video");
-  await writeFile(input, buffer);
-  return input;
+  return downloadWithAdapter(url, directory, (update) => updateJob(currentJob.id, update), MAX_SOURCE_BYTES);
 }
 
 async function mediaInfo(input) {
@@ -79,27 +73,22 @@ async function extractAudio(input, directory) {
 
 async function transcribe(audio, directory) {
   await updateJob(currentJob.id, { status: "transcribing", stage: "transcribing", progress: 50, message: "Generating transcript..." });
-  if (TRANSCRIBER_COMMAND) {
-    const { stdout } = await exec(TRANSCRIBER_COMMAND, [audio], { maxBuffer: 10 * 1024 * 1024 });
-    const transcript = stdout.trim();
-    await writeFile(join(directory, "transcript.txt"), transcript);
-    return transcript;
-  }
-  const fallback = "Local transcription adapter is active. Configure CLIPIQ_TRANSCRIBER_COMMAND to connect Faster-Whisper.";
-  await writeFile(join(directory, "transcript.txt"), fallback);
-  return fallback;
+  const transcript = await transcribeAudio(audio);
+  await writeFile(join(directory, "transcript.txt"), transcript);
+  return transcript;
 }
 
-function selectCandidates(duration, transcript) {
+async function selectCandidates(duration, transcript) {
   const clipLength = Math.min(45, Math.max(20, duration / 4));
   const count = Math.min(4, Math.max(1, Math.floor(duration / clipLength)));
-  return Array.from({ length: count }, (_, index) => ({
+  const candidates = Array.from({ length: count }, (_, index) => ({
     start: Math.max(0, Math.round(index * clipLength)),
     duration: Math.min(clipLength, Math.max(1, duration - index * clipLength)),
     title: `Local candidate ${index + 1}`,
     hook: transcript.slice(0, 120) || "A promising moment from your video",
     score: 60 + index * 7,
   }));
+  return rankCandidates({ transcript, candidates });
 }
 
 async function renderCandidates(input, candidates, directory) {
@@ -144,7 +133,7 @@ async function processJob(job) {
     const audio = await extractAudio(input, directory);
     const transcript = await transcribe(audio, directory);
     await updateJob(job.id, { status: "analyzing", stage: "analyzing", progress: 65, message: "Selecting clip candidates..." });
-    const candidates = selectCandidates(duration, transcript);
+    const candidates = await selectCandidates(duration, transcript);
     const rendered = await renderCandidates(input, candidates, directory);
     await saveResults(job, rendered);
     console.log(`[${WORKER_ID}] completed ${job.id}`);
