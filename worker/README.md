@@ -15,7 +15,7 @@ This worker is the first local-first Phase 5 vertical slice. It consumes authent
 - Uploads outputs to private Supabase Storage.
 - Saves clip metadata and updates projects/jobs, including failures.
 
-The fallback is deliberately not described as AI transcription or AI clip selection. Faster-Whisper and the AI provider adapter are the next provider-specific integrations after the local worker contract is verified.
+The fallback is deliberately not described as AI transcription or AI clip selection. Provider adapters are included but deployment is pending: set `CLIPIQ_AI_PROVIDER=gemini`, `groq`, or `openrouter` with the matching server-only key to activate remote ranking. Set `CLIPIQ_TRANSCRIBER_COMMAND` or `FASTER_WHISPER_COMMAND` to connect a Faster-Whisper command. Set `CLIPIQ_YTDLP_COMMAND` to connect yt-dlp for supported page URLs.
 
 ## Prerequisites
 
