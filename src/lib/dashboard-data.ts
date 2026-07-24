@@ -16,6 +16,7 @@ export type DashboardHistoryItem = {
   format: string;
   resolution: string;
   platform: string | null;
+  clipId: string | null;
   exportedAt: string;
 };
 
@@ -121,7 +122,7 @@ export async function loadDashboardData(userId: string) {
   const supabase = getSupabase();
   const [projectsResult, exportsResult, clipsResult] = await Promise.all([
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
-    supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
+    supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,clip_id,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
     supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
   ]);
   const error = projectsResult.error || exportsResult.error || clipsResult.error;
@@ -133,7 +134,8 @@ export async function loadDashboardData(userId: string) {
   }));
   const history: DashboardHistoryItem[] = (exportsResult.data ?? []).map((item) => ({
     id: String(item.id), title: item.title, thumbnail: item.thumbnail,
-    format: item.format, resolution: item.resolution, platform: item.platform, exportedAt: item.exported_at,
+    format: item.format, resolution: item.resolution, platform: item.platform,
+    clipId: item.clip_id ? String(item.clip_id) : null, exportedAt: item.exported_at,
   }));
   const clipRows = (clipsResult.data ?? []) as ClipRow[];
   const clips: DashboardClip[] = clipRows.map((clip) => ({
@@ -157,6 +159,31 @@ export type ActiveJob = {
   progress: number;
   message: string;
 };
+
+export type UserJobStatus = {
+  status: string;
+  progress: number;
+  message: string;
+  error: string | null;
+};
+
+export async function loadUserJobStatus(userId: string, jobId: string): Promise<UserJobStatus | null> {
+  const { data, error } = await getSupabase().from("jobs")
+    .select("status,progress,message,error").eq("id", jobId).eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data ? { status: data.status, progress: data.progress, message: data.message, error: data.error } : null;
+}
+
+export async function loadUserJobClips(userId: string, jobId: string) {
+  const { data, error } = await getSupabase().from("clips")
+    .select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at")
+    .eq("job_id", jobId).eq("user_id", userId).order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((clip) => ({
+    id: String(clip.id), title: clip.title, hook: clip.hook, duration: clip.duration,
+    thumbnail: clip.thumbnail, videoUrl: clip.video_url, viralityScore: clip.virality_score,
+  }));
+}
 
 export async function loadActiveJob(userId: string): Promise<ActiveJob | null> {
   const { data, error } = await getSupabase().from("jobs")
