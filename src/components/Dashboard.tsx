@@ -37,7 +37,7 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: any) => (
     className={cn(
       "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group",
       active 
-        ? "bg-white/10 text-white" 
+        ? "bg-brand/15 text-white" 
         : "text-muted-foreground hover:bg-white/5 hover:text-white"
     )}
   >
@@ -46,7 +46,7 @@ const SidebarItem = ({ icon: Icon, label, active = false, onClick }: any) => (
     {active && (
       <motion.div 
         layoutId="active-pill" 
-        className="ml-auto w-1.5 h-1.5 rounded-full bg-white" 
+        className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-2" 
       />
     )}
   </button>
@@ -196,12 +196,12 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-white overflow-hidden relative">
+    <div className="flex h-screen bg-background text-white overflow-hidden relative">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex w-64 border-r border-white/5 p-6 flex-col gap-8 shrink-0">
+      <aside className="hidden lg:flex w-64 border-r border-white/10 p-6 flex-col gap-8 shrink-0">
         <div className="flex items-center gap-2 px-2">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-            <Zap className="text-black w-5 h-5 fill-black" />
+          <div className="w-8 h-8 bg-gradient-to-br from-brand to-brand-2 rounded-lg flex items-center justify-center">
+            <Zap className="text-white w-5 h-5 fill-white" />
           </div>
           <span className="font-bold text-xl tracking-tight">ClipIQ AI</span>
         </div>
@@ -211,12 +211,12 @@ const Dashboard = () => {
           <SidebarItem icon={History} label="History" active={activeTab === "history"} onClick={() => setActiveTab("history")} />
           <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === "analytics"} onClick={() => setActiveTab("analytics")} />
         </nav>
-        <div className="space-y-1 pt-4 border-t border-white/5">
+        <div className="space-y-1 pt-4 border-t border-white/10">
           <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => setActiveTab("settings")} />
-          <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10 space-y-3">
+          <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-brand/10 to-transparent border border-brand/20 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Credits</span>
-              <Badge className="bg-white/10 text-[10px] h-5">Free Plan</Badge>
+              <Badge className="bg-brand/20 text-brand-2 text-[10px] h-5">Free Plan</Badge>
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-medium">
@@ -224,10 +224,10 @@ const Dashboard = () => {
                 <span className="text-muted-foreground">/ 10 mins</span>
               </div>
               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full w-full bg-white" />
+                <div className="h-full w-full bg-gradient-to-r from-brand to-brand-2" />
               </div>
             </div>
-            <Button className="w-full text-xs h-8 bg-white text-black hover:bg-white/90">Upgrade Pro</Button>
+            <Button className="w-full text-xs h-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Upgrade Pro</Button>
           </div>
         </div>
       </aside>
@@ -248,12 +248,12 @@ const Dashboard = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 left-0 bottom-0 w-[280px] bg-[#09090b] border-r border-white/10 z-[70] p-6 flex flex-col gap-8 lg:hidden"
+              className="fixed top-0 left-0 bottom-0 w-[280px] bg-background border-r border-white/10 z-[70] p-6 flex flex-col gap-8 lg:hidden"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                    <Zap className="text-black w-5 h-5 fill-black" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-brand to-brand-2 rounded-lg flex items-center justify-center">
+                    <Zap className="text-white w-5 h-5 fill-white" />
                   </div>
                   <span className="font-bold text-xl tracking-tight">ClipIQ AI</span>
                 </div>
@@ -268,16 +268,16 @@ const Dashboard = () => {
                 <SidebarItem icon={BarChart3} label="Analytics" active={activeTab === "analytics"} onClick={() => { setActiveTab("analytics"); setIsMobileMenuOpen(false); }} />
                 <SidebarItem icon={Settings} label="Settings" active={activeTab === "settings"} onClick={() => { setActiveTab("settings"); setIsMobileMenuOpen(false); }} />
               </nav>
-              <div className="mt-auto pt-4 border-t border-white/5">
-                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+              <div className="mt-auto pt-4 border-t border-white/10">
+                <div className="p-4 rounded-2xl bg-brand/5 border border-brand/20 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-muted-foreground uppercase">Storage</span>
                     <span className="text-xs">8.2 / 10 GB</span>
                   </div>
                   <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full w-[82%] bg-white" />
+                    <div className="h-full w-[82%] bg-gradient-to-r from-brand to-brand-2" />
                   </div>
-                  <Button className="w-full bg-white text-black hover:bg-white/90">Upgrade</Button>
+                  <Button className="w-full bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Upgrade</Button>
                 </div>
               </div>
             </motion.aside>
@@ -288,7 +288,7 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 border-b border-white/5 px-4 lg:px-8 flex items-center justify-between bg-[#09090b]/50 backdrop-blur-md z-40 sticky top-0">
+        <header className="h-16 border-b border-white/10 px-4 lg:px-8 flex items-center justify-between bg-background/50 backdrop-blur-md z-40 sticky top-0">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
@@ -314,9 +314,9 @@ const Dashboard = () => {
             </div>
             <Button variant="ghost" size="icon" className="relative shrink-0">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#09090b]" />
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
             </Button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 border border-white/20 shrink-0" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand to-brand-2 border border-white/20 shrink-0" />
           </div>
         </header>
 
@@ -338,7 +338,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" className="flex-1 sm:flex-none text-xs">Preview</Button>
-                    <Button className="flex-1 sm:flex-none bg-white text-black hover:bg-white/90 text-xs font-bold">Export</Button>
+                    <Button className="flex-1 sm:flex-none bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg text-xs font-bold">Export</Button>
                   </div>
                 </div>
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
@@ -361,12 +361,12 @@ const Dashboard = () => {
                       </div>
                     </div>
                     
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                          <div className="flex gap-4 items-center w-full sm:w-auto">
                            <Button size="icon" variant="ghost" className="shrink-0"><Play className="w-4 h-4 fill-white" /></Button>
                            <div className="h-1.5 flex-1 sm:w-48 bg-white/10 rounded-full relative">
-                              <div className="absolute left-0 top-0 h-full w-1/3 bg-white rounded-full" />
+                              <div className="absolute left-0 top-0 h-full w-1/3 bg-gradient-to-r from-brand to-brand-2 rounded-full" />
                            </div>
                            <span className="text-[10px] font-mono shrink-0">0:12 / 0:45</span>
                          </div>
@@ -378,31 +378,31 @@ const Dashboard = () => {
                     </Card>
                   </div>
                   <div className="space-y-6">
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Captions</CardTitle></CardHeader>
                       <CardContent className="space-y-3">
                         {["I think the most important thing is...", "to focus on the user experience.", "Because at the end of the day..."].map((cap, i) => (
                           <div key={i} className={cn(
                             "p-3 rounded-xl border text-[11px] transition-colors cursor-pointer",
-                            i === 0 ? "bg-white/5 border-white/10" : "bg-white/[0.02] border-transparent opacity-50 hover:opacity-100"
+                            i === 0 ? "bg-brand/10 border-brand/30" : "bg-white/[0.02] border-transparent opacity-50 hover:opacity-100"
                           )}>
                             "{cap}"
                           </div>
                         ))}
                       </CardContent>
                     </Card>
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Styles</CardTitle></CardHeader>
                       <CardContent className="grid grid-cols-2 gap-2">
                         {['Default', 'Bold', 'Subtitle', 'Comic'].map(style => (
                           <Button key={style} variant="outline" className={cn(
                             "text-[10px] h-10 rounded-xl",
-                            style === 'Bold' && "bg-white/10 border-white/20"
+                            style === 'Bold' && "bg-brand/15 border-brand/30"
                           )}>{style}</Button>
                         ))}
                       </CardContent>
                     </Card>
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">AI Assist</CardTitle></CardHeader>
                       <CardContent className="space-y-2">
                         <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 flex items-center gap-3">
@@ -440,10 +440,10 @@ const Dashboard = () => {
                     { label: "Est. Views", value: "125.4K", icon: TrendingUp, change: "+18% vs last week" },
                     { label: "Time Saved", value: "14.5h", icon: Clock, change: "+2.1h this week" },
                   ].map((stat, i) => (
-                    <Card key={i} className="bg-white/[0.02] border-white/5">
+                    <Card key={i} className="bg-white/[0.03] border-white/10">
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <span className="text-xs font-medium text-muted-foreground">{stat.label}</span>
-                        <stat.icon className="w-4 h-4 text-muted-foreground" />
+                        <stat.icon className="w-4 h-4 text-brand" />
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{stat.value}</div>
@@ -456,7 +456,7 @@ const Dashboard = () => {
                 {/* Generate Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2 space-y-6">
-                    <Card className="bg-white/[0.02] border-white/5 overflow-hidden">
+                    <Card className="bg-white/[0.03] border-white/10 overflow-hidden">
                       <div className="p-8 space-y-6">
                         <div className="space-y-2">
                           <h2 className="text-xl font-semibold">Generate New Clips</h2>
@@ -478,13 +478,13 @@ const Dashboard = () => {
                             <Button 
                               onClick={handleAnalyze} 
                               disabled={isAnalyzing}
-                              className="h-12 px-8 bg-white text-black hover:bg-white/90 gap-2 min-w-[120px]"
+                              className="h-12 px-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg gap-2 min-w-[120px]"
                             >
                               {isAnalyzing ? (
-                                <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               ) : (
                                 <>
-                                  <Sparkles className="w-4 h-4 fill-black" />
+                                  <Sparkles className="w-4 h-4 fill-white" />
                                   Analyze
                                 </>
                               )}
@@ -505,7 +505,7 @@ const Dashboard = () => {
                             >
                               <div className="flex justify-between text-xs font-medium">
                                 <span className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                  <div className="w-2 h-2 bg-brand-2 rounded-full animate-pulse" />
                                   {analyzeMessage}
                                 </span>
                                 <span>{analyzeProgress}%</span>
@@ -514,7 +514,7 @@ const Dashboard = () => {
                                 <motion.div 
                                   initial={{ width: 0 }}
                                   animate={{ width: `${analyzeProgress}%` }}
-                                  className="h-full bg-white" 
+                                  className="h-full bg-gradient-to-r from-brand to-brand-2" 
                                 />
                               </div>
                             </motion.div>
@@ -525,12 +525,12 @@ const Dashboard = () => {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="space-y-4 pt-4 border-t border-white/5"
+                              className="space-y-4 pt-4 border-t border-white/10"
                             >
                               <h3 className="text-sm font-semibold">Generated Clips ({clips.length})</h3>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {clips.map((clip) => (
-                                  <Card key={clip.id} className="bg-white/[0.02] border-white/5 overflow-hidden group">
+                                  <Card key={clip.id} className="bg-white/[0.03] border-white/10 overflow-hidden group">
                                     <div className="aspect-video relative">
                                       <img 
                                         src={clip.thumbnail} 
@@ -553,7 +553,7 @@ const Dashboard = () => {
                                         <Button size="sm" variant="outline" className="flex-1 text-[10px] h-8">
                                           Preview
                                         </Button>
-                                        <Button size="sm" className="flex-1 text-[10px] h-8 bg-white text-black hover:bg-white/90">
+                                        <Button size="sm" className="flex-1 text-[10px] h-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">
                                           Export
                                         </Button>
                                       </div>
@@ -567,7 +567,7 @@ const Dashboard = () => {
                         <div className="flex items-center gap-6">
                           <div className="flex -space-x-2">
                             {[1, 2, 3, 4].map(i => (
-                              <div key={i} className="w-7 h-7 rounded-full border-2 border-[#09090b] bg-white/10 flex items-center justify-center text-[10px] font-bold">
+                              <div key={i} className="w-7 h-7 rounded-full border-2 border-background bg-white/10 flex items-center justify-center text-[10px] font-bold">
                                 {i}
                               </div>
                             ))}
@@ -590,7 +590,7 @@ const Dashboard = () => {
                             <Card 
                               key={project.id} 
                               onClick={() => setSelectedProject(project.id)}
-                              className="bg-white/[0.02] border-white/5 group cursor-pointer overflow-hidden"
+                              className="bg-white/[0.03] border-white/10 group cursor-pointer overflow-hidden"
                             >
                               <div className="aspect-video relative">
                                 <img 
@@ -616,7 +616,7 @@ const Dashboard = () => {
                   </div>
 
                   <div className="space-y-6">
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader>
                         <CardTitle className="text-base">Virality Predictions</CardTitle>
                         <CardDescription className="text-xs">Based on current social trends</CardDescription>
@@ -637,7 +637,7 @@ const Dashboard = () => {
                                 initial={{ width: 0 }}
                                 animate={{ width: `${item.score}%` }}
                                 transition={{ duration: 1, delay: 0.5 }}
-                                className="h-full bg-white" 
+                                className="h-full bg-gradient-to-r from-brand to-brand-2" 
                               />
                             </div>
                           </div>
@@ -645,7 +645,7 @@ const Dashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader>
                         <CardTitle className="text-base">Recent Activities</CardTitle>
                       </CardHeader>
@@ -684,7 +684,7 @@ const Dashboard = () => {
                     <Button variant="outline" size="sm" className="flex-1 sm:flex-none">Export Data</Button>
                   </div>
                 </div>
-                <Card className="bg-white/[0.02] border-white/5 p-4 lg:p-8 overflow-x-auto">
+                <Card className="bg-white/[0.03] border-white/10 p-4 lg:p-8 overflow-x-auto">
                   <div className="min-w-[500px] h-[200px] flex items-end gap-2">
                     {analytics.chartData.map((h: number, i: number) => (
                       <div key={i} className="flex-1 flex flex-col gap-2 items-center group">
@@ -700,7 +700,7 @@ const Dashboard = () => {
                   </div>
                 </Card>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-white/[0.02] border-white/5 p-6 space-y-4">
+                  <Card className="bg-white/[0.03] border-white/10 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Top Performing Clips</h3>
                     {analytics.topClips.map((clip: any, i: number) => (
                       <div key={i} className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
@@ -713,7 +713,7 @@ const Dashboard = () => {
                       </div>
                     ))}
                   </Card>
-                  <Card className="bg-white/[0.02] border-white/5 p-6 space-y-4">
+                  <Card className="bg-white/[0.03] border-white/10 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Platform Distribution</h3>
                     <div className="space-y-4">
                       {analytics.platformDistribution.map((p: any) => (
@@ -750,7 +750,7 @@ const Dashboard = () => {
                     <p className="text-sm text-muted-foreground">No exports yet.</p>
                   ) : (
                     history.map((item, i) => (
-                      <Card key={item.id} className="bg-white/[0.02] border-white/5 p-4 flex flex-col sm:flex-row items-center gap-4">
+                      <Card key={item.id} className="bg-white/[0.03] border-white/10 p-4 flex flex-col sm:flex-row items-center gap-4">
                         <div className="w-full sm:w-32 aspect-video bg-white/10 rounded-lg shrink-0 overflow-hidden">
                           <img 
                             src={item.thumbnail} 
@@ -801,7 +801,7 @@ const Dashboard = () => {
                     </nav>
                   </div>
                   <div className="lg:col-span-3 space-y-6">
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader>
                         <CardTitle className="text-lg">Personal Information</CardTitle>
                         <CardDescription>Update your profile and contact details.</CardDescription>
@@ -817,10 +817,10 @@ const Dashboard = () => {
                             <Input placeholder="john@example.com" className="bg-white/5 border-white/10" />
                           </div>
                         </div>
-                        <Button className="bg-white text-black hover:bg-white/90">Save Changes</Button>
+                        <Button className="bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Save Changes</Button>
                       </CardContent>
                     </Card>
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader>
                         <CardTitle className="text-lg">Subscription Plan</CardTitle>
                         <CardDescription>Manage your current subscription and billing cycle.</CardDescription>
@@ -840,7 +840,7 @@ const Dashboard = () => {
                         </div>
                       </CardContent>
                     </Card>
-                    <Card className="bg-white/[0.02] border-white/5">
+                    <Card className="bg-white/[0.03] border-white/10">
                       <CardHeader>
                         <CardTitle className="text-lg">Danger Zone</CardTitle>
                         <CardDescription>Irreversible actions for your account.</CardDescription>
