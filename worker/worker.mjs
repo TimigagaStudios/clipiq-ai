@@ -38,6 +38,14 @@ async function supabase(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+async function recoverStaleJobs() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/recover_stale_clipiq_jobs`, {
+    method: "POST", headers: headers(), body: "{}",
+  });
+  if (!response.ok) throw new Error(`Stale-job recovery failed (${response.status}): ${await response.text()}`);
+  return response.json();
+}
+
 async function claimJob() {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/claim_next_clipiq_job`, {
     method: "POST", headers: headers(), body: JSON.stringify({ p_worker_id: WORKER_ID }),
@@ -45,6 +53,14 @@ async function claimJob() {
   if (!response.ok) throw new Error(`Job claim failed (${response.status}): ${await response.text()}`);
   const jobs = await response.json();
   return jobs?.[0] || null;
+}
+
+async function notifyUser(userId, title, detail) {
+  await supabase("notifications", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ user_id: userId, title, detail }),
+  });
 }
 
 async function updateJob(id, update) {
@@ -122,6 +138,7 @@ async function saveResults(job, rendered) {
   await supabase("clips", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows) });
   await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "completed", clip_count: rows.length }) });
   await updateJob(job.id, { status: "completed", stage: "completed", progress: 100, message: "Analysis complete!", completed_at: new Date().toISOString(), error: null, locked_at: null });
+  await notifyUser(job.user_id, "Analysis complete", "Your ClipIQ candidate clips are ready to review.");
 }
 
 async function processJob(job) {
@@ -141,6 +158,7 @@ async function processJob(job) {
     const message = error instanceof Error ? error.message : String(error);
     await supabase(`jobs?id=eq.${encodeURIComponent(job.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed", stage: "failed", message, error: message, worker_id: WORKER_ID, locked_at: null }) });
     await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed" }) });
+    await notifyUser(job.user_id, "Analysis failed", message);
     console.error(`[${WORKER_ID}] failed ${job.id}: ${message}`);
   } finally {
     currentJob = null;
@@ -152,6 +170,7 @@ let currentJob = null;
 console.log(`[${WORKER_ID}] ClipIQ Phase 5 worker listening`);
 while (true) {
   try {
+    await recoverStaleJobs();
     const job = await claimJob();
     if (job) await processJob(job);
     else await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
