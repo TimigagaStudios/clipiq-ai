@@ -97,28 +97,29 @@ export function AuthScreen() {
       </div>
 
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-[#0c0c12cc] shadow-2xl backdrop-blur-xl md:grid-cols-2">
-        {/* Brand panel */}
-        <div className="relative flex min-h-[280px] flex-col justify-between overflow-hidden bg-gradient-to-br from-brand via-[#b14bff] to-brand-2 p-8 text-white md:p-10">
-          <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative flex items-center gap-2">
+        {/* Brand panel â€” CSS aurora + scrim for legible text */}
+        <div className="relative flex min-h-[280px] flex-col justify-between overflow-hidden bg-[#160a28] p-8 text-white md:p-10">
+          <div className="aurora absolute -inset-[15%]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/25" />
+          <div className="relative z-10 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
               <Sparkles className="h-5 w-5" />
             </div>
             <span className="text-lg font-bold tracking-tight">ClipIQ AI</span>
           </div>
 
-          <div className="relative space-y-3">
-            <h2 className="text-3xl font-extrabold leading-tight md:text-4xl">
+          <div className="relative z-10 space-y-3">
+            <h2 className="text-3xl font-extrabold leading-tight md:text-4xl [text-shadow:0_2px_24px_rgba(0,0,0,0.45)]">
               {isSignup ? "Get Started with Us" : "Welcome Back"}
             </h2>
-            <p className="max-w-xs text-sm text-white/80">
+            <p className="max-w-xs text-sm text-white/85">
               {isSignup
                 ? "Complete these easy steps to register your account."
                 : "Sign in to pick up where you left off."}
             </p>
           </div>
 
-          <div className="relative grid grid-cols-3 gap-2">
+          <div className="relative z-10 grid grid-cols-3 gap-2">
             {STEPS.map((s) => {
               const active = s.n === 1;
               return (
@@ -126,7 +127,7 @@ export function AuthScreen() {
                   key={s.n}
                   className={
                     "rounded-xl p-3 text-[11px] font-medium leading-tight " +
-                    (active ? "bg-white text-black shadow-lg" : "bg-white/10 text-white/80")
+                    (active ? "bg-white text-black shadow-lg" : "bg-white/10 text-white/85 backdrop-blur-sm")
                   }
                 >
                   <span
