@@ -430,14 +430,22 @@ const Dashboard = () => {
                   onClick={() => setIsAccountMenuOpen((open) => !open)}
                   aria-label="Open account menu"
                   aria-expanded={isAccountMenuOpen}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 text-xs font-bold text-white shadow-[0_5px_12px_rgba(4,2,10,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-[#765bd0] text-xs font-bold text-white shadow-[0_11px_20px_rgba(4,2,10,0.64),0_4px_7px_rgba(49,31,105,0.42),inset_0_1px_1px_rgba(255,255,255,0.28),inset_0_-1px_1px_rgba(43,25,99,0.24)] transition hover:bg-[#8065dc] hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <UserRound className="h-5 w-5 fill-white/15 text-white" />
                 </button>
                 {isAccountMenuOpen && (
-                  <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-white/10 bg-[#151022] p-2 shadow-[0_16px_35px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)]">
-                    <p className="truncate px-3 pt-2 text-sm font-semibold text-white">{profile?.display_name ?? "Your ClipIQ profile"}</p>
-                    <p className="truncate px-3 pb-2 text-xs text-muted-foreground">{profile?.workspace_name ? `${profile.workspace_name} Â· ` : ""}{user?.email ?? "Signed in"}</p>
+                  <div className="absolute right-0 top-12 z-50 w-72 overflow-hidden rounded-2xl border border-white/10 bg-[#151022] shadow-[0_16px_35px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)]">
+                    <div className="border-b border-white/8 bg-gradient-to-br from-brand/18 to-transparent px-4 py-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand">Creator profile</p>
+                      <p className="mt-1 truncate text-base font-bold text-white">{profile?.display_name ?? "Your ClipIQ profile"}</p>
+                      {profile?.workspace_name && <span className="mt-2 inline-flex rounded-full border border-brand/25 bg-brand/12 px-2.5 py-1 text-[11px] font-medium text-white">{profile.workspace_name}</span>}
+                    </div>
+                    <div className="px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Email address</p>
+                      <p className="mt-1 truncate text-sm text-white/80">{user?.email ?? "Signed in"}</p>
+                    </div>
+                    <div className="border-t border-white/8 p-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -449,6 +457,7 @@ const Dashboard = () => {
                       <LogOut className="h-4 w-4 text-brand-2" />
                       Sign out
                     </button>
+                    </div>
                   </div>
                 )}
               </div>
