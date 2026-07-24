@@ -40,7 +40,7 @@ import { useAuth } from "../lib/auth";
 import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
-import { clearUserExports, completeUserJob, createUserExport, createUserJob, createUserProject, failUserJob, loadActiveJob, loadDashboardData, updateUserJob } from "../lib/dashboard-data";
+import { clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus } from "../lib/dashboard-data";
 import { getClipSignedUrl } from "../lib/clip-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -74,7 +74,6 @@ const Dashboard = () => {
   const [url, setUrl] = useState("");
   const [jobId, setJobId] = useState<string | null>(null);
   const [savedJobId, setSavedJobId] = useState<string | null>(null);
-  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
   const [clips, setClips] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
@@ -185,24 +184,24 @@ const Dashboard = () => {
 
     const poll = async () => {
       try {
-        const res = await fetch(`${API_BASE}/jobs/${jobId}/status`);
-        const data = await res.json();
+        const data = isConfigured && user && savedJobId
+          ? await loadUserJobStatus(user.id, savedJobId)
+          : await fetch(`${API_BASE}/jobs/${jobId}/status`).then((response) => response.json());
+        if (!data) return;
         setAnalyzeProgress(data.progress);
         setAnalyzeMessage(data.message);
-        if (isConfigured && user && savedJobId) {
-          await updateUserJob(user.id, savedJobId, { status: data.status, progress: data.progress, message: data.message });
-        }
         if (data.status === "completed") {
           setIsAnalyzing(false);
-          void fetchClips(jobId);
-          void refreshDashboardData();
+          if (isConfigured && user && savedJobId) {
+            setClips(await loadUserJobClips(user.id, savedJobId));
+            await refreshDashboardData();
+          } else {
+            await fetchClips(jobId);
+          }
           if (pollingRef.current) clearInterval(pollingRef.current);
         } else if (data.status === "failed") {
           setIsAnalyzing(false);
-          if (isConfigured && user && savedJobId && savedProjectId) {
-            await failUserJob(user.id, savedProjectId, savedJobId, data.message || "Analysis failed.");
-          }
-          setError("Analysis failed. Please try again.");
+          setError(data.error || data.message || "Analysis failed. Please try again.");
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
       } catch (err) {
@@ -245,13 +244,13 @@ const Dashboard = () => {
 
   async function fetchClips(id: string) {
     try {
+      if (isConfigured && user && savedJobId) {
+        setClips(await loadUserJobClips(user.id, savedJobId));
+        return;
+      }
       const res = await fetch(`${API_BASE}/jobs/${id}/clips`);
       const data = await res.json();
       setClips(data.clips || []);
-      if (isConfigured && user && savedJobId && savedProjectId) {
-        await completeUserJob(user.id, savedProjectId, savedJobId, data.clips || []);
-        await refreshDashboardData();
-      }
     } catch (err) {
       console.error("Failed to fetch clips:", err);
     }
@@ -279,7 +278,7 @@ const Dashboard = () => {
       if (isConfigured && user) {
         const project = await createUserProject(user.id, url.trim());
         const databaseJobId = await createUserJob(user.id, project.id, url.trim(), data.jobId);
-        setSavedProjectId(project.id); setSavedJobId(databaseJobId);
+        setSavedJobId(databaseJobId);
       }
       setJobId(data.jobId);
       setAnalyzeProgress(data.progress);
@@ -287,6 +286,22 @@ const Dashboard = () => {
     } catch (err: any) {
       setIsAnalyzing(false);
       setError(err.message || "Failed to start analysis");
+    }
+  };
+
+  const handleShareClip = async (clipId: string | null) => {
+    if (!clipId || !session?.access_token) {
+      setError("This export is not linked to a rendered clip yet.");
+      return;
+    }
+    try {
+      const url = await getClipSignedUrl(clipId, session.access_token);
+      if (navigator.share) await navigator.share({ title: "ClipIQ clip", url });
+      else await navigator.clipboard.writeText(url);
+      setSettingsNotice(navigator.share ? "Share sheet opened." : "Signed clip link copied.");
+    } catch (err) {
+      if ((err instanceof DOMException) && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "Could not share the rendered clip.");
     }
   };
 
@@ -954,7 +969,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -1007,11 +1022,11 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.format} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {item.format} ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
-                          <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
-                          <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Share2 className="w-3.5 h-3.5" /> Share</Button>
+                          <Button size="sm" variant="outline" disabled={!item.clipId} onClick={() => void handleDownloadClip({ id: item.clipId ?? undefined })} className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
+                          <Button size="sm" variant="outline" disabled={!item.clipId} onClick={() => void handleShareClip(item.clipId)} className="flex-1 sm:flex-none h-8 text-xs gap-2"><Share2 className="w-3.5 h-3.5" /> Share</Button>
                         </div>
                       </Card>
                     ))
@@ -1062,7 +1077,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂ</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂ</button>
                       </div>
                     )}
 
