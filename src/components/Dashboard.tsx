@@ -40,7 +40,7 @@ import { useAuth } from "../lib/auth";
 import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
-import { clearUserExports, completeUserJob, createUserExport, createUserJob, createUserProject, failUserJob, loadDashboardData } from "../lib/dashboard-data";
+import { clearUserExports, completeUserJob, createUserExport, createUserJob, createUserProject, failUserJob, loadActiveJob, loadDashboardData, updateUserJob } from "../lib/dashboard-data";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -125,11 +125,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!profile) return;
-    setProfileFirstName(profile.first_name ?? "");
-    setProfileLastName(profile.last_name ?? "");
-    setProfileWorkspace(profile.workspace_name ?? "");
-    setProfileRole(profile.role ?? "");
-    setProfilePlatform(profile.primary_platform ?? "");
+    void Promise.resolve().then(() => {
+      setProfileFirstName(profile.first_name ?? "");
+      setProfileLastName(profile.last_name ?? "");
+      setProfileWorkspace(profile.workspace_name ?? "");
+      setProfileRole(profile.role ?? "");
+      setProfilePlatform(profile.primary_platform ?? "");
+    });
   }, [profile]);
 
   async function saveProfileFromSettings() {
@@ -158,14 +160,22 @@ const Dashboard = () => {
   useEffect(() => {
     const pendingUrl = localStorage.getItem("clipiq_pending_url");
     if (pendingUrl) {
-      setUrl(pendingUrl);
+      void Promise.resolve().then(() => setUrl(pendingUrl));
       localStorage.removeItem("clipiq_pending_url");
     }
   }, []);
 
   useEffect(() => {
-    if (isConfigured && !user) return;
-    void refreshDashboardData();
+    if (!isConfigured || !user) return;
+    void loadActiveJob(user.id).then((activeJob) => {
+      if (!activeJob) return;
+      setSavedJobId(activeJob.id);
+      setSavedProjectId(activeJob.projectId);
+      setJobId(activeJob.externalJobId);
+      setAnalyzeProgress(activeJob.progress);
+      setAnalyzeMessage(activeJob.message);
+      setIsAnalyzing(true);
+    }).catch((err) => console.error("Failed to resume active job:", err));
   }, [isConfigured, user]);
 
   // Poll job status
@@ -178,6 +188,9 @@ const Dashboard = () => {
         const data = await res.json();
         setAnalyzeProgress(data.progress);
         setAnalyzeMessage(data.message);
+        if (isConfigured && user && savedJobId) {
+          await updateUserJob(user.id, savedJobId, { status: data.status, progress: data.progress, message: data.message });
+        }
         if (data.status === "completed") {
           setIsAnalyzing(false);
           void fetchClips(jobId);
@@ -204,7 +217,7 @@ const Dashboard = () => {
     };
   }, [jobId, isAnalyzing]);
 
-  const refreshDashboardData = async () => {
+  async function refreshDashboardData() {
     try {
       if (isConfigured && user) {
         const data = await loadDashboardData(user.id);
@@ -226,9 +239,9 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Failed to refresh dashboard:", err);
     }
-  };
+  }
 
-  const fetchClips = async (id: string) => {
+  async function fetchClips(id: string) {
     try {
       const res = await fetch(`${API_BASE}/jobs/${id}/clips`);
       const data = await res.json();
@@ -240,7 +253,7 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Failed to fetch clips:", err);
     }
-  };
+  }
 
   const handleAnalyze = async () => {
     if (!url.trim()) {
