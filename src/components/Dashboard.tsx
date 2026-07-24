@@ -40,7 +40,7 @@ import { useAuth } from "../lib/auth";
 import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
-import { completeUserJob, createUserJob, createUserProject, loadDashboardData } from "../lib/dashboard-data";
+import { clearUserExports, completeUserJob, createUserExport, createUserJob, createUserProject, failUserJob, loadDashboardData } from "../lib/dashboard-data";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -80,7 +80,8 @@ const Dashboard = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [savedTotals, setSavedTotals] = useState({ videos: 0, clips: 0, exports: 0 });
   const [error, setError] = useState("");
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -153,17 +154,19 @@ const Dashboard = () => {
     setIsMobileMenuOpen(false);
   }
 
-  // Load pending URL from landing page and fetch initial data
+  // Load pending URL and refresh the correct data source when auth is ready.
   useEffect(() => {
     const pendingUrl = localStorage.getItem("clipiq_pending_url");
     if (pendingUrl) {
       setUrl(pendingUrl);
       localStorage.removeItem("clipiq_pending_url");
     }
-    fetchProjects();
-    fetchHistory();
-    fetchAnalytics();
   }, []);
+
+  useEffect(() => {
+    if (isConfigured && !user) return;
+    void refreshDashboardData();
+  }, [isConfigured, user]);
 
   // Poll job status
   useEffect(() => {
@@ -177,11 +180,14 @@ const Dashboard = () => {
         setAnalyzeMessage(data.message);
         if (data.status === "completed") {
           setIsAnalyzing(false);
-          fetchClips(jobId);
-          fetchProjects();
+          void fetchClips(jobId);
+          void refreshDashboardData();
           if (pollingRef.current) clearInterval(pollingRef.current);
         } else if (data.status === "failed") {
           setIsAnalyzing(false);
+          if (isConfigured && user && savedJobId && savedProjectId) {
+            await failUserJob(user.id, savedProjectId, savedJobId, data.message || "Analysis failed.");
+          }
           setError("Analysis failed. Please try again.");
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
@@ -198,33 +204,27 @@ const Dashboard = () => {
     };
   }, [jobId, isAnalyzing]);
 
-  const fetchProjects = async () => {
+  const refreshDashboardData = async () => {
     try {
       if (isConfigured && user) {
         const data = await loadDashboardData(user.id);
-        setProjects(data.projects); setHistory(data.history); setSavedTotals(data.totals);
+        setProjects(data.projects);
+        setHistory(data.history);
+        setSavedTotals(data.totals);
+        setAnalytics(data.analytics);
         return;
       }
-      const res = await fetch(`${API_BASE}/projects`); const data = await res.json(); setProjects(data.projects || []);
-    } catch (err) { console.error("Failed to fetch projects:", err); }
-  };
-
-  const fetchHistory = async () => {
-    try {
-      if (isConfigured && user) { const data = await loadDashboardData(user.id); setHistory(data.history); return; }
-      const res = await fetch(`${API_BASE}/history`); const data = await res.json(); setHistory(data.history || []);
+      const [projectsRes, historyRes, analyticsRes] = await Promise.all([
+        fetch(`${API_BASE}/projects`), fetch(`${API_BASE}/history`), fetch(`${API_BASE}/analytics`),
+      ]);
+      const [projectsData, historyData, analyticsData] = await Promise.all([
+        projectsRes.json(), historyRes.json(), analyticsRes.json(),
+      ]);
+      setProjects(projectsData.projects || []);
+      setHistory(historyData.history || []);
+      setAnalytics(analyticsData);
     } catch (err) {
-      console.error("Failed to fetch history:", err);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/analytics`);
-      const data = await res.json();
-      setAnalytics(data);
-    } catch (err) {
-      console.error("Failed to fetch analytics:", err);
+      console.error("Failed to refresh dashboard:", err);
     }
   };
 
@@ -235,7 +235,7 @@ const Dashboard = () => {
       setClips(data.clips || []);
       if (isConfigured && user && savedJobId && savedProjectId) {
         await completeUserJob(user.id, savedProjectId, savedJobId, data.clips || []);
-        await fetchProjects();
+        await refreshDashboardData();
       }
     } catch (err) {
       console.error("Failed to fetch clips:", err);
@@ -275,13 +275,44 @@ const Dashboard = () => {
     }
   };
 
+  const handleExport = async (clip: Record<string, unknown>) => {
+    if (!isConfigured || !user) {
+      setSettingsNotice("Sign in with Supabase to save exports to your history.");
+      return;
+    }
+    try {
+      await createUserExport(user.id, clip);
+      setSettingsNotice("Export saved to your history.");
+      await refreshDashboardData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save export.");
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!isConfigured || !user || !history.length) return;
+    if (!window.confirm("Clear all saved export history? This will not delete your clips or projects.")) return;
+    setClearingHistory(true);
+    try {
+      await clearUserExports(user.id);
+      setSettingsNotice("Export history cleared.");
+      await refreshDashboardData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not clear history.");
+    } finally {
+      setClearingHistory(false);
+    }
+  };
+
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
 
+  const [renderedAt] = useState(() => Date.now());
+
   const timeAgo = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime();
+    const diff = renderedAt - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 60) return `${mins}m ago`;
     const hours = Math.floor(mins / 60);
@@ -626,9 +657,9 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {[
                     { label: "Total Videos", value: (isConfigured ? savedTotals.videos : projects.length).toString(), icon: Video, change: `+${projects.length} total` },
-                    { label: "Total Clips", value: (isConfigured ? savedTotals.clips : (clips.length || 48)).toString(), icon: Zap, change: "+12 this week" },
-                    { label: "Est. Views", value: "125.4K", icon: TrendingUp, change: "+18% vs last week" },
-                    { label: "Time Saved", value: "14.5h", icon: Clock, change: "+2.1h this week" },
+                    { label: "Total Clips", value: (isConfigured ? savedTotals.clips : clips.length).toString(), icon: Zap, change: isConfigured ? "Saved clips" : "Demo data" },
+                    { label: "Est. Views", value: analytics?.estimatedViews ?? "0", icon: TrendingUp, change: isConfigured ? "Derived estimate" : "Demo data" },
+                    { label: "Time Saved", value: analytics?.timeSaved ?? "0.0h", icon: Clock, change: isConfigured ? "Derived estimate" : "Demo data" },
                   ].map((stat, i) => (
                     <Card key={i} className="bg-white/[0.03] border-white/10">
                       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -743,7 +774,7 @@ const Dashboard = () => {
                                         <Button size="sm" variant="outline" className="flex-1 text-[10px] h-8">
                                           Preview
                                         </Button>
-                                        <Button size="sm" className="flex-1 text-[10px] h-8 hover:brightness-105">
+                                        <Button size="sm" onClick={() => void handleExport(clip)} className="flex-1 text-[10px] h-8 hover:brightness-105">
                                           Export
                                         </Button>
                                       </div>
@@ -840,18 +871,17 @@ const Dashboard = () => {
                         <CardTitle className="text-base">Recent Activities</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                          <div key={i} className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        {history.length === 0 && projects.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No activity yet. Analyze a video to create your first project.</p>
+                        ) : (
+                          [...history.slice(0, 3), ...projects.slice(0, 3)].slice(0, 3).map((item: any) => (
+                            <div key={item.id} className="flex gap-3">
+                              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0"><CheckCircle2 className="w-4 h-4 text-green-500" /></div>
+                              <div><p className="text-xs font-medium">{item.exportedAt ? "Export saved" : "Project created"}</p><p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{item.title}</p></div>
+                              <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{timeAgo(item.exportedAt || item.createdAt)}</span>
                             </div>
-                            <div>
-                              <p className="text-xs font-medium">Render completed</p>
-                              <p className="text-[10px] text-muted-foreground">"The Future of Work" - Clip #{i}</p>
-                            </div>
-                            <span className="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">{i}m ago</span>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -892,12 +922,12 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card className="bg-white/[0.03] border-white/10 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Top Performing Clips</h3>
-                    {analytics.topClips.map((clip: any, i: number) => (
+                    {analytics.topClips.length === 0 ? <p className="text-sm text-muted-foreground">No clip analytics yet.</p> : analytics.topClips.map((clip: any, i: number) => (
                       <div key={i} className="flex items-center gap-4 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -906,7 +936,7 @@ const Dashboard = () => {
                   <Card className="bg-white/[0.03] border-white/10 p-6 space-y-4">
                     <h3 className="font-bold text-sm">Platform Distribution</h3>
                     <div className="space-y-4">
-                      {analytics.platformDistribution.map((p: any) => (
+                      {analytics.platformDistribution.length === 0 ? <p className="text-sm text-muted-foreground">No exports to measure yet.</p> : analytics.platformDistribution.map((p: any) => (
                         <div key={p.platform} className="space-y-1">
                           <div className="flex justify-between text-[10px]">
                             <span className="text-muted-foreground">{p.platform}</span>
@@ -933,7 +963,7 @@ const Dashboard = () => {
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <h2 className="text-2xl font-bold">Export History</h2>
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">Clear History</Button>
+                  <Button variant="outline" size="sm" disabled={clearingHistory || !history.length} onClick={() => void handleClearHistory()} className="w-full sm:w-auto">{clearingHistory ? "Clearing..." : "Clear History"}</Button>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {history.length === 0 ? (
@@ -950,7 +980,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ {item.format} ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {item.format} ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -1005,7 +1035,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÃÂÃÂÃÂÃÂ</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ</button>
                       </div>
                     )}
 
