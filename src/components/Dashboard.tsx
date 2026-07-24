@@ -36,6 +36,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { Badge } from "./ui/Badge";
 import { cn } from "../utils/cn";
 import { useAuth } from "../lib/auth";
+import { initialsFor, useProfile } from "../lib/profile";
+import { OnboardingModal } from "./OnboardingModal";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -84,6 +86,7 @@ const Dashboard = () => {
     { id: 3, title: "Free plan active", detail: "You have 10 minutes of processing this month.", unread: false },
   ]);
   const { isConfigured, user, signOut } = useAuth();
+  const { profile, loading: profileLoading, save: saveProfile } = useProfile();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function openBilling() {
@@ -222,6 +225,9 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden relative">
+      {isConfigured && profile && !profileLoading && !profile.onboarding_completed_at && (
+        <OnboardingModal profile={profile} save={saveProfile} />
+      )}
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex w-64 border-r border-white/10 p-6 flex-col gap-8 shrink-0">
         <div className="flex items-center gap-2 px-2">
@@ -401,8 +407,10 @@ const Dashboard = () => {
                   onClick={() => setIsAccountMenuOpen((open) => !open)}
                   aria-label="Open account menu"
                   aria-expanded={isAccountMenuOpen}
-                  className="h-9 w-9 rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 shadow-[0_5px_12px_rgba(4,2,10,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                />
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 text-xs font-bold text-white shadow-[0_5px_12px_rgba(4,2,10,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  {initialsFor(profile, user?.email)}
+                </button>
                 {isAccountMenuOpen && (
                   <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-white/10 bg-[#151022] p-2 shadow-[0_16px_35px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)]">
                     <p className="truncate px-3 py-2 text-xs text-muted-foreground">{user?.email ?? "Signed in"}</p>
