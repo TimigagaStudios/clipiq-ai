@@ -79,6 +79,7 @@ const Dashboard = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [jobHistory, setJobHistory] = useState<any[]>([]);
   const [savedTotals, setSavedTotals] = useState({ videos: 0, clips: 0, exports: 0 });
   const [error, setError] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
@@ -227,6 +228,7 @@ const Dashboard = () => {
         setProjects(data.projects);
         setHistory(data.history);
         setClips(data.clips);
+        setJobHistory(data.jobs);
         setSavedTotals(data.totals);
         setAnalytics(data.analytics);
         return;
@@ -259,10 +261,12 @@ const Dashboard = () => {
     }
   }
 
-  const handleRetryJob = async () => {
-    if (!savedJobId || !isConfigured || !user) return;
+  const handleRetryJob = async (requestedJobId = savedJobId) => {
+    if (!requestedJobId || !isConfigured || !user) return;
     try {
-      await retryUserJob(savedJobId);
+      await retryUserJob(requestedJobId);
+      setSavedJobId(requestedJobId);
+      setJobId(requestedJobId);
       setError("");
       setJobStatus("queued");
       setAnalyzeProgress(0);
@@ -1028,6 +1032,20 @@ const Dashboard = () => {
                   <h2 className="text-2xl font-bold">Export History</h2>
                   <Button variant="outline" size="sm" disabled={clearingHistory || !history.length} onClick={() => void handleClearHistory()} className="w-full sm:w-auto">{clearingHistory ? "Clearing..." : "Clear History"}</Button>
                 </div>
+                {isConfigured && jobHistory.length > 0 && (
+                  <Card className="bg-white/[0.03] border-white/10">
+                    <CardHeader><CardTitle className="text-base">Processing activity</CardTitle><CardDescription>Recent analysis jobs and retry status.</CardDescription></CardHeader>
+                    <CardContent className="space-y-3">
+                      {jobHistory.map((job: any) => {
+                        const terminalFailure = job.status === "failed" || job.status === "dead_letter";
+                        return <div key={job.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="min-w-0"><p className="truncate text-sm font-semibold">{job.message}</p><p className="mt-1 text-xs text-muted-foreground">{job.stage} Â· {job.progress}% Â· attempt {job.processingAttempts}/{job.maxAttempts}</p></div>
+                          <div className="flex items-center gap-3"><span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase", terminalFailure ? "bg-red-500/10 text-red-300" : job.status === "completed" ? "bg-green-500/10 text-green-300" : "bg-brand/10 text-brand-2")}>{job.status.replace("_", " ")}</span>{terminalFailure && <Button size="sm" variant="outline" onClick={() => void handleRetryJob(job.id)}>Retry</Button>}</div>
+                        </div>;
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
                 <div className="grid grid-cols-1 gap-4">
                   {history.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No exports yet.</p>
