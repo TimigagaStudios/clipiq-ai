@@ -63,7 +63,7 @@ export function AuthScreen() {
           setMessage({ type: "info", text: "Account created. Check your email to confirm it, then sign in." });
           setMode("signin");
         } else {
-          setMessage({ type: "info", text: "Account created â€” you're signed in." });
+          setMessage({ type: "info", text: "Account created Ã¢â¬â you're signed in." });
         }
       }
     } finally {
@@ -85,7 +85,7 @@ export function AuthScreen() {
   }
 
   function onSocial(provider: string) {
-    setMessage({ type: "info", text: `${provider} sign-in is coming soon â€” use email for now.` });
+    setMessage({ type: "info", text: `${provider} sign-in is coming soon Ã¢â¬â use email for now.` });
   }
 
   return (
@@ -97,7 +97,7 @@ export function AuthScreen() {
       </div>
 
       <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-[#0c0c12cc] shadow-2xl backdrop-blur-xl md:grid-cols-2">
-        {/* Brand panel â€” CSS aurora + scrim for legible text */}
+        {/* Brand panel Ã¢â¬â CSS aurora + scrim for legible text */}
         <div className="relative flex min-h-[280px] flex-col justify-between overflow-hidden bg-[#160a28] p-8 text-white md:p-10">
           <div className="aurora absolute -inset-[15%]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/25" />
@@ -158,14 +158,14 @@ export function AuthScreen() {
             <button
               type="button"
               onClick={() => onSocial("Google")}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-white/10"
+              className="soft-raised flex items-center justify-center gap-2 rounded-xl bg-[#151022] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-[#1b1430] active:shadow-[inset_4px_4px_10px_rgba(3,2,8,0.7),inset_-3px_-3px_8px_rgba(99,72,156,0.16)]"
             >
               <GoogleIcon /> Google
             </button>
             <button
               type="button"
               onClick={() => onSocial("GitHub")}
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-white/10"
+              className="soft-raised flex items-center justify-center gap-2 rounded-xl bg-[#151022] px-3 py-2.5 text-sm font-medium text-foreground transition hover:bg-[#1b1430] active:shadow-[inset_4px_4px_10px_rgba(3,2,8,0.7),inset_-3px_-3px_8px_rgba(99,72,156,0.16)]"
             >
               <GithubIcon /> GitHub
             </button>
@@ -188,7 +188,7 @@ export function AuthScreen() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                className="soft-pressed h-11 w-full rounded-xl bg-[#100b1d] px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
               />
             </div>
             <div className="space-y-1.5">
@@ -205,7 +205,7 @@ export function AuthScreen() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                  className="soft-pressed h-11 w-full rounded-xl bg-[#100b1d] px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
                 />
                 <button
                   type="button"
@@ -228,9 +228,9 @@ export function AuthScreen() {
             <button
               type="submit"
               disabled={busy}
-              className="h-11 w-full rounded-xl bg-gradient-to-r from-brand to-brand-2 font-semibold text-white shadow-lg transition hover:opacity-90 disabled:opacity-60"
+              className="soft-raised h-11 w-full rounded-xl bg-gradient-to-r from-brand to-brand-2 font-semibold text-white transition hover:brightness-110 active:shadow-[inset_5px_5px_12px_rgba(82,28,116,0.45),inset_-3px_-3px_10px_rgba(255,181,218,0.18)] disabled:opacity-60"
             >
-              {busy ? "Please waitâ€¦" : isSignup ? "Sign Up" : "Sign in"}
+              {busy ? "Please waitÃ¢â¬Â¦" : isSignup ? "Sign Up" : "Sign in"}
             </button>
           </form>
 
