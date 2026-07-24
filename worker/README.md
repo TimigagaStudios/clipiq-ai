@@ -14,6 +14,7 @@ This worker is the first local-first Phase 5 vertical slice. It consumes authent
 - Renders candidate MP4 clips with FFmpeg.
 - Uploads outputs to private Supabase Storage.
 - Saves clip metadata and updates projects/jobs, including failures.
+- Recovers jobs with expired worker locks and creates completion/failure notifications.
 
 The fallback is deliberately not described as AI transcription or AI clip selection. Provider adapters are included but deployment is pending: set `CLIPIQ_AI_PROVIDER=gemini`, `groq`, or `openrouter` with the matching server-only key to activate remote ranking. Set `CLIPIQ_TRANSCRIBER_COMMAND` or `FASTER_WHISPER_COMMAND` to connect a Faster-Whisper command. Set `CLIPIQ_YTDLP_COMMAND` to connect yt-dlp for supported page URLs.
 
