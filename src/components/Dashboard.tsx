@@ -82,6 +82,12 @@ const Dashboard = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState("Profile");
   const [settingsNotice, setSettingsNotice] = useState("");
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileWorkspace, setProfileWorkspace] = useState("");
+  const [profileRole, setProfileRole] = useState("");
+  const [profilePlatform, setProfilePlatform] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const { isConfigured, user, signOut } = useAuth();
   const { profile, loading: profileLoading, save: saveProfile } = useProfile();
@@ -110,6 +116,30 @@ const Dashboard = () => {
     if (!target.length) return;
     setNotifications((items) => items.map((item) => target.includes(item.id) ? { ...item, unread: false } : item));
     await getSupabase().from("notifications").update({ is_read: true }).in("id", target).eq("user_id", user.id);
+  }
+
+  useEffect(() => {
+    if (!profile) return;
+    setProfileFirstName(profile.first_name ?? "");
+    setProfileLastName(profile.last_name ?? "");
+    setProfileWorkspace(profile.workspace_name ?? "");
+    setProfileRole(profile.role ?? "");
+    setProfilePlatform(profile.primary_platform ?? "");
+  }, [profile]);
+
+  async function saveProfileFromSettings() {
+    if (!profileFirstName.trim() || !profileLastName.trim() || !profileWorkspace.trim()) {
+      setSettingsNotice("First name, last name, and workspace name are required.");
+      return;
+    }
+    setSavingProfile(true);
+    const result = await saveProfile({
+      first_name: profileFirstName.trim(), last_name: profileLastName.trim(),
+      display_name: `${profileFirstName.trim()} ${profileLastName.trim()}`,
+      workspace_name: profileWorkspace.trim(), role: profileRole, primary_platform: profilePlatform,
+    });
+    setSavingProfile(false);
+    setSettingsNotice(result.error ? result.error : "Profile saved successfully.");
   }
 
   function openBilling() {
@@ -854,7 +884,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÃÂ¢ÃÂÃÂ¢ {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¢ {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -907,7 +937,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÃÂ¢ÃÂÃÂ¢ {item.format} ÃÂ¢ÃÂÃÂ¢ {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¢ {item.format} ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ¢ {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -962,7 +992,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">Ã</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÃÂ</button>
                       </div>
                     )}
 
@@ -974,16 +1004,14 @@ const Dashboard = () => {
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</label>
-                              <Input placeholder="John Doe" className="bg-white/5 border-white/10" />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
-                              <Input value={user?.email ?? ""} readOnly placeholder="john@example.com" className="bg-white/5 border-white/10" />
-                            </div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">First Name</label><Input value={profileFirstName} onChange={(e) => setProfileFirstName(e.target.value)} placeholder="First name" /></div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Last Name</label><Input value={profileLastName} onChange={(e) => setProfileLastName(e.target.value)} placeholder="Last name" /></div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Workspace</label><Input value={profileWorkspace} onChange={(e) => setProfileWorkspace(e.target.value)} placeholder="Your workspace" /></div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Address</label><Input value={user?.email ?? ""} readOnly className="opacity-70" /></div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Role</label><Input value={profileRole} onChange={(e) => setProfileRole(e.target.value)} placeholder="Creator" /></div>
+                            <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Primary Platform</label><Input value={profilePlatform} onChange={(e) => setProfilePlatform(e.target.value)} placeholder="YouTube" /></div>
                           </div>
-                          <Button onClick={() => setSettingsNotice("Profile saving will become available with the approved Phase 4 onboarding and profile system.")}>Save Changes</Button>
+                          <Button disabled={savingProfile} onClick={() => void saveProfileFromSettings()}>{savingProfile ? "Saving..." : "Save Changes"}</Button>
                         </CardContent>
                       </Card>
                     )}
