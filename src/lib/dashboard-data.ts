@@ -131,6 +131,26 @@ export async function loadDashboardData(userId: string) {
   };
 }
 
+export type ActiveJob = {
+  id: string;
+  projectId: string;
+  externalJobId: string;
+  status: string;
+  progress: number;
+  message: string;
+};
+
+export async function loadActiveJob(userId: string): Promise<ActiveJob | null> {
+  const { data, error } = await getSupabase().from("jobs")
+    .select("id,project_id,external_job_id,status,progress,message")
+    .eq("user_id", userId)
+    .in("status", ["queued", "downloading", "extracting_audio", "transcribing", "analyzing", "generating_clips"])
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data?.project_id || !data.external_job_id) return null;
+  return { id: String(data.id), projectId: String(data.project_id), externalJobId: String(data.external_job_id), status: data.status, progress: data.progress, message: data.message };
+}
+
 export async function createUserProject(userId: string, sourceUrl: string) {
   const title = new URL(sourceUrl).hostname.replace(/^www\./, "") + " video";
   const { data, error } = await getSupabase().from("projects").insert({
