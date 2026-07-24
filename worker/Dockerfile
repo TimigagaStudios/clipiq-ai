@@ -5,7 +5,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY worker/worker.mjs /app/worker.mjs
+COPY worker/ /app/
 
 ENV NODE_ENV=production
 CMD ["node", "/app/worker.mjs"]
