@@ -28,7 +28,8 @@ import {
   ShieldCheck,
   KeyRound,
   Users,
-  CircleUserRound
+  CircleUserRound,
+  UserRound
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -36,8 +37,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { Badge } from "./ui/Badge";
 import { cn } from "../utils/cn";
 import { useAuth } from "../lib/auth";
-import { initialsFor, useProfile } from "../lib/profile";
+import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
+import { getSupabase } from "../lib/supabase";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -80,14 +82,35 @@ const Dashboard = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState("Profile");
   const [settingsNotice, setSettingsNotice] = useState("");
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: "Welcome to ClipIQ", detail: "Your creator workspace is ready to explore.", unread: true },
-    { id: 2, title: "Tips for your first clip", detail: "Paste a long-form video link to start an analysis.", unread: true },
-    { id: 3, title: "Free plan active", detail: "You have 10 minutes of processing this month.", unread: false },
-  ]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const { isConfigured, user, signOut } = useAuth();
   const { profile, loading: profileLoading, save: saveProfile } = useProfile();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
+    const loadNotifications = async () => {
+      const supabase = getSupabase();
+      let { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+      if (!data?.length) {
+        await supabase.from("notifications").insert([
+          { user_id: user.id, title: "Welcome to ClipIQ", detail: "Your creator workspace is ready to explore." },
+          { user_id: user.id, title: "Tips for your first clip", detail: "Paste a long-form video link to start an analysis." },
+        ]);
+        ({ data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }));
+      }
+      setNotifications((data ?? []).map((item: any) => ({ ...item, unread: !item.is_read })));
+    };
+    void loadNotifications();
+  }, [isConfigured, user]);
+
+  async function markNotificationsRead(ids?: string[]) {
+    if (!user) return;
+    const target = ids ?? notifications.filter((item) => item.unread).map((item) => item.id);
+    if (!target.length) return;
+    setNotifications((items) => items.map((item) => target.includes(item.id) ? { ...item, unread: false } : item));
+    await getSupabase().from("notifications").update({ is_read: true }).in("id", target).eq("user_id", user.id);
+  }
 
   function openBilling() {
     setActiveTab("settings");
@@ -368,7 +391,7 @@ const Dashboard = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setNotifications((items) => items.map((item) => ({ ...item, unread: false })))}
+                      onClick={() => void markNotificationsRead()}
                       className="flex items-center gap-1.5 text-xs font-medium text-brand transition hover:text-brand-2"
                     >
                       <CheckCheck className="h-3.5 w-3.5" /> Mark all read
@@ -379,7 +402,7 @@ const Dashboard = () => {
                       <button
                         key={notification.id}
                         type="button"
-                        onClick={() => setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, unread: false } : item))}
+                        onClick={() => void markNotificationsRead([notification.id])}
                         className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-white/6"
                       >
                         <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", notification.unread ? "bg-brand-2 shadow-[0_0_9px_rgba(255,77,141,0.9)]" : "bg-white/15")} />
@@ -409,11 +432,12 @@ const Dashboard = () => {
                   aria-expanded={isAccountMenuOpen}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-brand to-brand-2 text-xs font-bold text-white shadow-[0_5px_12px_rgba(4,2,10,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  {initialsFor(profile, user?.email)}
+                  <UserRound className="h-5 w-5 fill-white/15 text-white" />
                 </button>
                 {isAccountMenuOpen && (
                   <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-white/10 bg-[#151022] p-2 shadow-[0_16px_35px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.08)]">
-                    <p className="truncate px-3 py-2 text-xs text-muted-foreground">{user?.email ?? "Signed in"}</p>
+                    <p className="truncate px-3 pt-2 text-sm font-semibold text-white">{profile?.display_name ?? "Your ClipIQ profile"}</p>
+                    <p className="truncate px-3 pb-2 text-xs text-muted-foreground">{profile?.workspace_name ? `${profile.workspace_name} Â· ` : ""}{user?.email ?? "Signed in"}</p>
                     <button
                       type="button"
                       onClick={() => {
