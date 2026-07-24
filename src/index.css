@@ -56,6 +56,22 @@
   .glow {
     box-shadow: 0 0 24px -4px rgba(124, 92, 255, 0.45);
   }
+  /* Soft UI utilities: preserve the dark ClipIQ palette while adding the
+     gentle raised / pressed depth from the selected reference. */
+  .soft-raised {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      8px 8px 18px rgba(3, 2, 8, 0.76),
+      -5px -5px 16px rgba(97, 70, 155, 0.18),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.16);
+  }
+  .soft-pressed {
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow:
+      inset 4px 4px 10px rgba(3, 2, 8, 0.72),
+      inset -3px -3px 9px rgba(91, 65, 146, 0.15),
+      1px 1px 0 rgba(255, 255, 255, 0.04);
+  }
   /* CSS recreation of the purple "aurora" reference image. Use as an
      absolutely-positioned layer inside a `relative overflow-hidden` parent. */
   .aurora {
