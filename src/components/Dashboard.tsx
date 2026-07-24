@@ -86,6 +86,13 @@ const Dashboard = () => {
   const { isConfigured, user, signOut } = useAuth();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  function openBilling() {
+    setActiveTab("settings");
+    setActiveSettingsTab("Billing");
+    setSettingsNotice("Choose a plan when secure billing and checkout are ready. Your current plan remains ClipIQ Free.");
+    setIsMobileMenuOpen(false);
+  }
+
   // Load pending URL from landing page and fetch initial data
   useEffect(() => {
     const pendingUrl = localStorage.getItem("clipiq_pending_url");
@@ -245,7 +252,7 @@ const Dashboard = () => {
                 <div className="h-full w-full bg-gradient-to-r from-brand to-brand-2" />
               </div>
             </div>
-            <Button className="w-full text-xs h-8 hover:brightness-105">Upgrade Pro</Button>
+            <Button onClick={openBilling} className="w-full text-xs h-8 hover:brightness-105">Upgrade Pro</Button>
           </div>
         </div>
       </aside>
@@ -295,7 +302,7 @@ const Dashboard = () => {
                   <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full w-[82%] bg-gradient-to-r from-brand to-brand-2" />
                   </div>
-                  <Button className="w-full hover:brightness-105">Upgrade</Button>
+                  <Button onClick={openBilling} className="w-full hover:brightness-105">Upgrade</Button>
                 </div>
               </div>
             </motion.aside>
