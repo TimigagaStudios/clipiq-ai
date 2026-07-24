@@ -22,7 +22,13 @@ import {
   CreditCard,
   Download,
   Share2,
-  LogOut
+  LogOut,
+  Check,
+  CheckCheck,
+  ShieldCheck,
+  KeyRound,
+  Users,
+  CircleUserRound
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -69,6 +75,14 @@ const Dashboard = () => {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState("Profile");
+  const [settingsNotice, setSettingsNotice] = useState("");
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: "Welcome to ClipIQ", detail: "Your creator workspace is ready to explore.", unread: true },
+    { id: 2, title: "Tips for your first clip", detail: "Paste a long-form video link to start an analysis.", unread: true },
+    { id: 3, title: "Free plan active", detail: "You have 10 minutes of processing this month.", unread: false },
+  ]);
   const { isConfigured, user, signOut } = useAuth();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -302,10 +316,12 @@ const Dashboard = () => {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground overflow-hidden">
-              <span className="hidden sm:inline">Dashboard</span>
-              <ChevronRight className="w-4 h-4 hidden sm:inline shrink-0" />
-              <span className="text-white capitalize truncate">{activeTab}</span>
+            <div className="min-w-0">
+              <p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-brand/80 sm:block">ClipIQ dashboard</p>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold tracking-tight text-white capitalize sm:text-xl">{activeTab}</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-2 shadow-[0_0_10px_rgba(255,77,141,0.85)]" />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -316,10 +332,61 @@ const Dashboard = () => {
                 className="bg-white/5 border-white/10 pl-9 w-40 lg:w-64 h-9 text-xs"
               />
             </div>
-            <Button variant="ghost" size="icon" className="relative shrink-0">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
-            </Button>
+            <div className="relative shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open notifications"
+                aria-expanded={isNotificationOpen}
+                onClick={() => setIsNotificationOpen((open) => !open)}
+                className="relative"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some((notification) => notification.unread) && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
+                )}
+              </Button>
+              {isNotificationOpen && (
+                <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#151022] shadow-[0_18px_40px_rgba(0,0,0,0.58),inset_0_1px_1px_rgba(255,255,255,0.08)]">
+                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-bold text-white">Notifications</p>
+                      <p className="text-[11px] text-muted-foreground">Your latest ClipIQ updates</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNotifications((items) => items.map((item) => ({ ...item, unread: false })))}
+                      className="flex items-center gap-1.5 text-xs font-medium text-brand transition hover:text-brand-2"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto p-2">
+                    {notifications.map((notification) => (
+                      <button
+                        key={notification.id}
+                        type="button"
+                        onClick={() => setNotifications((items) => items.map((item) => item.id === notification.id ? { ...item, unread: false } : item))}
+                        className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-white/6"
+                      >
+                        <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", notification.unread ? "bg-brand-2 shadow-[0_0_9px_rgba(255,77,141,0.9)]" : "bg-white/15")} />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-white">{notification.title}</span>
+                          <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{notification.detail}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsNotice("A full notification history will be saved when Phase 4 data features begin.")}
+                    className="flex w-full items-center justify-center gap-2 border-t border-white/8 px-4 py-3 text-xs font-semibold text-brand transition hover:bg-white/5 hover:text-brand-2"
+                  >
+                    <Check className="h-3.5 w-3.5" /> View all notifications
+                  </button>
+                </div>
+              )}
+            </div>
             {isConfigured ? (
               <div className="relative shrink-0">
                 <button
@@ -813,18 +880,28 @@ const Dashboard = () => {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                <h2 className="text-2xl font-bold">Settings</h2>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand/80">Account workspace</p>
+                  <h2 className="mt-1 text-3xl font-bold tracking-tight">Settings</h2>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
                   <div className="lg:col-span-1">
-                    <nav className="flex lg:flex-col gap-1 overflow-x-auto pb-4 no-scrollbar">
-                      {['Profile', 'Billing', 'Security', 'API', 'Team'].map((item, i) => (
-                        <Button 
-                          key={item} 
-                          variant="ghost" 
+                    <nav className="flex gap-2 overflow-x-auto pb-3 no-scrollbar lg:flex-col">
+                      {["Profile", "Billing", "Security", "API", "Team"].map((item) => (
+                        <Button
+                          key={item}
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setActiveSettingsTab(item);
+                            setSettingsNotice("");
+                          }}
                           className={cn(
-                            "justify-start text-sm",
-                            i === 0 ? "bg-white/5 text-white" : "text-muted-foreground"
+                            "shrink-0 justify-start px-4 text-sm",
+                            activeSettingsTab === item
+                              ? "bg-brand/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                              : "text-muted-foreground",
                           )}
                         >
                           {item}
@@ -832,55 +909,93 @@ const Dashboard = () => {
                       ))}
                     </nav>
                   </div>
-                  <div className="lg:col-span-3 space-y-6">
-                    <Card className="bg-white/[0.03] border-white/10">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Personal Information</CardTitle>
-                        <CardDescription>Update your profile and contact details.</CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</label>
-                            <Input placeholder="John Doe" className="bg-white/5 border-white/10" />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
-                            <Input placeholder="john@example.com" className="bg-white/5 border-white/10" />
-                          </div>
-                        </div>
-                        <Button className="hover:brightness-105">Save Changes</Button>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-white/[0.03] border-white/10">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Subscription Plan</CardTitle>
-                        <CardDescription>Manage your current subscription and billing cycle.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 gap-4">
-                          <div className="flex items-center gap-4">
-                            <div className="p-2 rounded-lg bg-white/10">
-                              <Zap className="w-5 h-5 text-white" />
+
+                  <div className="space-y-6 lg:col-span-3">
+                    {settingsNotice && (
+                      <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
+                        <span>{settingsNotice}</span>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">Ã</button>
+                      </div>
+                    )}
+
+                    {activeSettingsTab === "Profile" && (
+                      <Card className="bg-white/[0.03] border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg"><CircleUserRound className="h-5 w-5 text-brand" /> Personal Information</CardTitle>
+                          <CardDescription>Update your profile and contact details.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</label>
+                              <Input placeholder="John Doe" className="bg-white/5 border-white/10" />
                             </div>
-                            <div>
-                              <h4 className="font-bold text-sm">ClipIQ Free</h4>
-                              <p className="text-xs text-muted-foreground">10 minutes remaining this month</p>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
+                              <Input value={user?.email ?? ""} readOnly placeholder="john@example.com" className="bg-white/5 border-white/10" />
                             </div>
                           </div>
-                          <Button variant="outline" className="w-full sm:w-auto text-xs gap-2"><CreditCard className="w-3.5 h-3.5" /> Manage Billing</Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-white/[0.03] border-white/10">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Danger Zone</CardTitle>
-                        <CardDescription>Irreversible actions for your account.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button variant="destructive" className="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">Delete Account</Button>
-                      </CardContent>
-                    </Card>
+                          <Button onClick={() => setSettingsNotice("Profile saving will become available with the approved Phase 4 onboarding and profile system.")}>Save Changes</Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {activeSettingsTab === "Billing" && (
+                      <Card className="bg-white/[0.03] border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg"><CreditCard className="h-5 w-5 text-brand" /> Subscription Plan</CardTitle>
+                          <CardDescription>Review your current usage and plan options.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-col items-start justify-between gap-5 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:flex-row sm:items-center">
+                            <div className="flex items-center gap-4">
+                              <div className="rounded-xl bg-brand/15 p-3"><Zap className="h-6 w-6 text-brand" /></div>
+                              <div><h4 className="font-bold">ClipIQ Free</h4><p className="mt-1 text-xs text-muted-foreground">10 minutes of processing remaining this month</p></div>
+                            </div>
+                            <Button variant="outline" onClick={() => setSettingsNotice("Billing and upgrades are coming after the payment system is built.")}>Manage Billing</Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {activeSettingsTab === "Security" && (
+                      <Card className="bg-white/[0.03] border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg"><ShieldCheck className="h-5 w-5 text-brand" /> Security</CardTitle>
+                          <CardDescription>Keep your ClipIQ account protected.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5"><p className="font-semibold">Password protection</p><p className="mt-1 text-sm text-muted-foreground">Use a strong, unique password for your ClipIQ account.</p></div>
+                          <Button variant="outline" onClick={() => setSettingsNotice("Password reset controls will be connected to Supabase Auth in a later authentication refinement.")}>Change Password</Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {activeSettingsTab === "API" && (
+                      <Card className="bg-white/[0.03] border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg"><KeyRound className="h-5 w-5 text-brand" /> API Access</CardTitle>
+                          <CardDescription>Connect ClipIQ to your own tools and workflows.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-6 text-center"><KeyRound className="mx-auto h-7 w-7 text-brand" /><p className="mt-3 font-semibold">API access is being prepared</p><p className="mt-1 text-sm text-muted-foreground">Keys cannot be created until secure server-side API support is available.</p></div>
+                          <Button onClick={() => setSettingsNotice("API key generation needs secure server-side storage, so it is not available yet.")}>Request API Access</Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {activeSettingsTab === "Team" && (
+                      <Card className="bg-white/[0.03] border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-lg"><Users className="h-5 w-5 text-brand" /> Team</CardTitle>
+                          <CardDescription>Collaborate with editors, creators, and teammates.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-6 text-center"><Users className="mx-auto h-7 w-7 text-muted-foreground" /><p className="mt-3 font-semibold">Your team workspace is ready</p><p className="mt-1 text-sm text-muted-foreground">Invite and permission controls will arrive with multi-user workspace data.</p></div>
+                          <Button onClick={() => setSettingsNotice("Team invitations need saved workspace data, which is planned for a later Phase 4 step.")}>Invite Team Member</Button>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 </div>
               </motion.div>
