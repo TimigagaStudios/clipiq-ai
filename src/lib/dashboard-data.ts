@@ -27,12 +27,25 @@ export type DashboardAnalytics = {
   timeSaved: string;
 };
 
+export type DashboardClip = {
+  id: string;
+  title: string;
+  hook: string | null;
+  duration: string | null;
+  viralityScore: number | null;
+  thumbnail: string | null;
+  videoUrl: string | null;
+};
+
 type ClipRow = {
   id: string;
   title: string;
+  hook: string | null;
+  duration: string | null;
   virality_score: number | null;
   created_at: string;
   thumbnail: string | null;
+  video_url: string | null;
 };
 
 type ExportRow = {
@@ -77,7 +90,7 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
       title: clip.title,
       views: formatCompact(score * 250),
       engagement: `${Math.max(1, Math.round(score / 10))}%`,
-      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "â",
+      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "Ã¢ÂÂ",
     };
   });
 
@@ -109,7 +122,7 @@ export async function loadDashboardData(userId: string) {
   const [projectsResult, exportsResult, clipsResult] = await Promise.all([
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
-    supabase.from("clips").select("id,title,thumbnail,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
   ]);
   const error = projectsResult.error || exportsResult.error || clipsResult.error;
   if (error) throw error;
@@ -122,12 +135,17 @@ export async function loadDashboardData(userId: string) {
     id: String(item.id), title: item.title, thumbnail: item.thumbnail,
     format: item.format, resolution: item.resolution, platform: item.platform, exportedAt: item.exported_at,
   }));
-  const clips = (clipsResult.data ?? []) as ClipRow[];
+  const clipRows = (clipsResult.data ?? []) as ClipRow[];
+  const clips: DashboardClip[] = clipRows.map((clip) => ({
+    id: String(clip.id), title: clip.title, hook: clip.hook, duration: clip.duration,
+    viralityScore: clip.virality_score, thumbnail: clip.thumbnail, videoUrl: clip.video_url,
+  }));
   return {
     projects,
     history,
+    clips,
     totals: { videos: projects.length, clips: clips.length, exports: history.length },
-    analytics: deriveAnalytics(clips, (exportsResult.data ?? []) as ExportRow[]),
+    analytics: deriveAnalytics(clipRows, (exportsResult.data ?? []) as ExportRow[]),
   };
 }
 
