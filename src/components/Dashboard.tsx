@@ -41,6 +41,7 @@ import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
 import { clearUserExports, completeUserJob, createUserExport, createUserJob, createUserProject, failUserJob, loadActiveJob, loadDashboardData, updateUserJob } from "../lib/dashboard-data";
+import { getClipSignedUrl } from "../lib/clip-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -94,7 +95,7 @@ const Dashboard = () => {
   const [profilePlatform, setProfilePlatform] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const { isConfigured, user, signOut } = useAuth();
+  const { isConfigured, user, session, signOut } = useAuth();
   const { profile, loading: profileLoading, save: saveProfile } = useProfile();
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -223,6 +224,7 @@ const Dashboard = () => {
         const data = await loadDashboardData(user.id);
         setProjects(data.projects);
         setHistory(data.history);
+        setClips(data.clips);
         setSavedTotals(data.totals);
         setAnalytics(data.analytics);
         return;
@@ -285,6 +287,18 @@ const Dashboard = () => {
     } catch (err: any) {
       setIsAnalyzing(false);
       setError(err.message || "Failed to start analysis");
+    }
+  };
+
+  const handleDownloadClip = async (clip: { id?: string; videoUrl?: string | null }) => {
+    try {
+      const url = clip.id && session?.access_token
+        ? await getClipSignedUrl(clip.id, session.access_token)
+        : clip.videoUrl;
+      if (!url) throw new Error("This clip does not have a rendered video yet.");
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open the rendered clip.");
     }
   };
 
@@ -784,7 +798,7 @@ const Dashboard = () => {
                                       <h4 className="text-sm font-semibold truncate">{clip.title}</h4>
                                       <p className="text-xs text-muted-foreground line-clamp-2">{clip.hook}</p>
                                       <div className="flex gap-2 pt-2">
-                                        <Button size="sm" variant="outline" className="flex-1 text-[10px] h-8">
+                                        <Button size="sm" variant="outline" onClick={() => void handleDownloadClip(clip)} className="flex-1 text-[10px] h-8">
                                           Preview
                                         </Button>
                                         <Button size="sm" onClick={() => void handleExport(clip)} className="flex-1 text-[10px] h-8 hover:brightness-105">
@@ -940,7 +954,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -993,7 +1007,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {item.format} ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ˘ {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.format} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -1048,7 +1062,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ĂÂĂÂĂÂĂÂĂÂĂÂĂÂĂÂ</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂ</button>
                       </div>
                     )}
 
