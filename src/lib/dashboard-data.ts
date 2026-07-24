@@ -257,6 +257,12 @@ export async function createUserExport(userId: string, clip: Record<string, unkn
   if (error) throw error;
 }
 
+export async function retryUserJob(jobId: string) {
+  const { data, error } = await getSupabase().rpc("retry_clipiq_job", { p_job_id: jobId }).single();
+  if (error) throw error;
+  return data;
+}
+
 export async function clearUserExports(userId: string) {
   const { error } = await getSupabase().from("exports").delete().eq("user_id", userId);
   if (error) throw error;
