@@ -20,6 +20,19 @@ export type DashboardHistoryItem = {
   exportedAt: string;
 };
 
+export type DashboardJob = {
+  id: string;
+  status: string;
+  stage: string;
+  progress: number;
+  message: string;
+  error: string | null;
+  processingAttempts: number;
+  maxAttempts: number;
+  createdAt: string;
+  completedAt: string | null;
+};
+
 export type DashboardAnalytics = {
   chartData: number[];
   topClips: { title: string; views: string; engagement: string; change: string }[];
@@ -120,12 +133,13 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
 
 export async function loadDashboardData(userId: string) {
   const supabase = getSupabase();
-  const [projectsResult, exportsResult, clipsResult] = await Promise.all([
+  const [projectsResult, exportsResult, clipsResult, jobsResult] = await Promise.all([
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,clip_id,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
     supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("jobs").select("id,status,stage,progress,message,error,processing_attempts,max_attempts,created_at,completed_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
-  const error = projectsResult.error || exportsResult.error || clipsResult.error;
+  const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error;
   if (error) throw error;
 
   const projects: DashboardProject[] = (projectsResult.data ?? []).map((project) => ({
@@ -137,6 +151,11 @@ export async function loadDashboardData(userId: string) {
     format: item.format, resolution: item.resolution, platform: item.platform,
     clipId: item.clip_id ? String(item.clip_id) : null, exportedAt: item.exported_at,
   }));
+  const jobs: DashboardJob[] = (jobsResult.data ?? []).map((job) => ({
+    id: String(job.id), status: job.status, stage: job.stage, progress: job.progress,
+    message: job.message, error: job.error, processingAttempts: job.processing_attempts,
+    maxAttempts: job.max_attempts, createdAt: job.created_at, completedAt: job.completed_at,
+  }));
   const clipRows = (clipsResult.data ?? []) as ClipRow[];
   const clips: DashboardClip[] = clipRows.map((clip) => ({
     id: String(clip.id), title: clip.title, hook: clip.hook, duration: clip.duration,
@@ -146,6 +165,7 @@ export async function loadDashboardData(userId: string) {
     projects,
     history,
     clips,
+    jobs,
     totals: { videos: projects.length, clips: clips.length, exports: history.length },
     analytics: deriveAnalytics(clipRows, (exportsResult.data ?? []) as ExportRow[]),
   };
