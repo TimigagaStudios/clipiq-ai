@@ -47,7 +47,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="ghost" onClick={onGetStarted} className="text-xs sm:text-sm font-medium px-2 sm:px-4">Log in</Button>
-            <Button onClick={onGetStarted} className="rounded-full px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">Get Started</Button>
+            <Button onClick={onGetStarted} className="rounded-full px-4 sm:px-6 h-9 sm:h-10 text-xs sm:text-sm hover:brightness-105">Get Started</Button>
           </div>
         </div>
       </nav>
@@ -95,7 +95,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
                 onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
               />
             </div>
-            <Button onClick={handleGenerate} size="lg" className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg">
+            <Button onClick={handleGenerate} size="lg" className="w-full sm:w-auto rounded-xl hover:brightness-105">
               Generate Clips
             </Button>
           </motion.div>
@@ -368,7 +368,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
                 <Button
                   className={cn(
                     "w-full rounded-xl",
-                    plan.popular ? "bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg" : "bg-white/5 text-white border border-white/10 hover:bg-brand/10 hover:border-brand/30"
+                    plan.popular ? "hover:brightness-105" : "bg-white/5 text-white border border-white/10 hover:bg-brand/10 hover:border-brand/30"
                   )}
                   onClick={onGetStarted}
                 >
@@ -407,7 +407,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             Join 10,000+ creators who are using ClipIQ AI to dominate social media.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={onGetStarted} size="lg" className="rounded-full px-8 bg-gradient-to-r from-brand to-brand-2 text-white hover:opacity-90 shadow-lg group">
+            <Button onClick={onGetStarted} size="lg" className="rounded-full px-8 hover:brightness-105 group">
               Get Started for Free
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Button>
@@ -432,7 +432,7 @@ const LandingPage = ({ onGetStarted }: { onGetStarted: () => void }) => {
             <a href="#" className="hover:text-white">Terms</a>
           </div>
           <p className="text-sm text-muted-foreground">
-            Â© 2024 ClipIQ AI. All rights reserved.
+            ÃÂ© 2024 ClipIQ AI. All rights reserved.
           </p>
         </div>
       </footer>
