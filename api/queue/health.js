@@ -1,4 +1,4 @@
- Vercel serverless — GET /api/queue/health
+// Vercel serverless — GET /api/queue/health
 // Operational endpoint. Protect with a server-side QUEUE_HEALTH_TOKEN.
 
 import { createClient } from '@supabase/supabase-js';
