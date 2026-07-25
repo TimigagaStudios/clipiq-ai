@@ -29,6 +29,10 @@ CLIPIQ_YTDLP_COMMAND
 
 Only set the provider keys and command paths that are actually available. Do not use a `VITE_*` variable for any server secret.
 
+## Queue health monitoring
+
+The operational endpoint is `GET /api/queue/health`. Protect it with the server-side `QUEUE_HEALTH_TOKEN` environment variable and send the same value in the `x-queue-health-token` header. Do not expose this endpoint or token in the browser. The worker also logs queue health changes directly.
+
 ## Before activation
 
 1. Apply Supabase migrations 006, 007, and 008 in order.
