@@ -1,4 +1,4 @@
-# ClipIQ worker cloud deployment preparation
+ ClipIQ worker cloud deployment preparation
 
 Status: Deployment Pending. No cloud service has been connected by this code batch.
 
@@ -35,7 +35,7 @@ The operational endpoint is `GET /api/queue/health`. Protect it with the server-
 
 ## Before activation
 
-1. Apply Supabase migrations 006, 007, and 008 in order.
+1. Apply Supabase migrations 006 through 012 in order.
 2. Confirm the private `clipiq-media` bucket exists.
 3. Confirm the service-role key is stored only in Railway variables.
 4. Confirm Vercel has `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `CLIPIQ_STORAGE_BUCKET` for signed clip URLs.
