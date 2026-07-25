@@ -40,7 +40,7 @@ import { useAuth } from "../lib/auth";
 import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
-import { clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus, retryUserJob } from "../lib/dashboard-data";
+import { cancelUserJob, clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus, retryUserJob } from "../lib/dashboard-data";
 import { getClipSignedUrl } from "../lib/clip-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -80,6 +80,8 @@ const Dashboard = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [analytics, setAnalytics] = useState<any>(null);
   const [jobHistory, setJobHistory] = useState<any[]>([]);
+  const [jobFilter, setJobFilter] = useState("all");
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [savedTotals, setSavedTotals] = useState({ videos: 0, clips: 0, exports: 0 });
   const [error, setError] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
@@ -260,6 +262,17 @@ const Dashboard = () => {
       console.error("Failed to fetch clips:", err);
     }
   }
+
+  const handleCancelJob = async (jobIdToCancel: string) => {
+    try {
+      await cancelUserJob(jobIdToCancel);
+      setJobHistory((items) => items.map((item) => item.id === jobIdToCancel ? { ...item, status: "cancelled", stage: "cancelled", message: "Cancelled by the user" } : item));
+      if (savedJobId === jobIdToCancel) setIsAnalyzing(false);
+      setSettingsNotice("Queued analysis cancelled.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not cancel this job.");
+    }
+  };
 
   const handleRetryJob = async (requestedJobId = savedJobId) => {
     if (!requestedJobId || !isConfigured || !user) return;
@@ -994,7 +1007,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -1034,13 +1047,22 @@ const Dashboard = () => {
                 </div>
                 {isConfigured && jobHistory.length > 0 && (
                   <Card className="bg-white/[0.03] border-white/10">
-                    <CardHeader><CardTitle className="text-base">Processing activity</CardTitle><CardDescription>Recent analysis jobs and retry status.</CardDescription></CardHeader>
+                    <CardHeader>
+                      <CardTitle className="text-base">Processing activity</CardTitle>
+                      <CardDescription>Recent analysis jobs and retry status.</CardDescription>
+                      <div className="flex gap-2 overflow-x-auto pt-2">
+                        {["all", "queued", "completed", "failed", "dead_letter", "cancelled"].map((filter) => <Button key={filter} size="sm" variant={jobFilter === filter ? "default" : "outline"} onClick={() => setJobFilter(filter)} className="shrink-0 text-[10px] capitalize">{filter.replace("_", " ")}</Button>)}
+                      </div>
+                    </CardHeader>
                     <CardContent className="space-y-3">
-                      {jobHistory.map((job: any) => {
+                      {jobHistory.filter((job: any) => jobFilter === "all" || job.status === jobFilter).length === 0 ? <p className="text-sm text-muted-foreground">No jobs match this filter.</p> : jobHistory.filter((job: any) => jobFilter === "all" || job.status === jobFilter).map((job: any) => {
                         const terminalFailure = job.status === "failed" || job.status === "dead_letter";
-                        return <div key={job.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0"><p className="truncate text-sm font-semibold">{job.message}</p><p className="mt-1 text-xs text-muted-foreground">{job.stage} Â· {job.progress}% Â· attempt {job.processingAttempts}/{job.maxAttempts}</p></div>
-                          <div className="flex items-center gap-3"><span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase", terminalFailure ? "bg-red-500/10 text-red-300" : job.status === "completed" ? "bg-green-500/10 text-green-300" : "bg-brand/10 text-brand-2")}>{job.status.replace("_", " ")}</span>{terminalFailure && <Button size="sm" variant="outline" onClick={() => void handleRetryJob(job.id)}>Retry</Button>}</div>
+                        return <div key={job.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                          <div role="button" tabIndex={0} onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)} className="flex cursor-pointer flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0"><p className="truncate text-sm font-semibold">{job.message}</p><p className="mt-1 text-xs text-muted-foreground">{job.stage} Âˇ {job.progress}% Âˇ attempt {job.processingAttempts}/{job.maxAttempts}</p></div>
+                            <div className="flex items-center gap-3"><span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase", terminalFailure ? "bg-red-500/10 text-red-300" : job.status === "completed" ? "bg-green-500/10 text-green-300" : "bg-brand/10 text-brand-2")}>{job.status.replace("_", " ")}</span>{terminalFailure && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void handleRetryJob(job.id); }}>Retry</Button>}{job.status === "queued" && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void handleCancelJob(job.id); }}>Cancel</Button>}</div>
+                          </div>
+                          {selectedJob?.id === job.id && <div className="border-t border-white/10 pt-3 text-xs text-muted-foreground"><p><span className="text-white">Status:</span> {job.status} Âˇ {job.stage}</p>{job.lastErrorCode && <p className="mt-1"><span className="text-white">Error code:</span> {job.lastErrorCode}</p>}{job.error && <p className="mt-1 break-words text-red-300"><span className="text-white">Details:</span> {job.error}</p>}<p className="mt-1">Started {timeAgo(job.createdAt)}{job.completedAt ? ` Âˇ completed ${timeAgo(job.completedAt)}` : ""}</p></div>}
                         </div>;
                       })}
                     </CardContent>
@@ -1061,7 +1083,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {item.format} ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃËÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃË {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.format} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" disabled={!item.clipId} onClick={() => void handleDownloadClip({ id: item.clipId ?? undefined })} className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -1116,7 +1138,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂÄÂÃÂ</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂ</button>
                       </div>
                     )}
 
