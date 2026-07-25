@@ -92,6 +92,13 @@ async function readQueueHealth() {
   return health;
 }
 
+async function recordHeartbeat(queueHealth) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_clipiq_worker_heartbeat`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ p_worker_id: WORKER_ID, p_queue_health: queueHealth }),
+  });
+  if (!response.ok) throw new Error(`Worker heartbeat failed (${response.status}): ${await response.text()}`);
+}
+
 async function updateJob(id, update, notify = false) {
   await supabase(`jobs?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH", headers: { Prefer: "return=minimal" },
@@ -237,7 +244,8 @@ console.log(`[${WORKER_ID}] ClipIQ Phase 5 worker listening`);
 while (true) {
   try {
     await recoverStaleJobs();
-    await readQueueHealth();
+    const queueHealth = await readQueueHealth();
+    await recordHeartbeat(queueHealth);
     const job = await claimJob();
     if (job) await processJob(job);
     else await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
