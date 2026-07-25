@@ -17,6 +17,11 @@ const POLL_INTERVAL_MS = Number(process.env.CLIPIQ_POLL_INTERVAL_MS || 3000);
 const MAX_SOURCE_BYTES = Number(process.env.CLIPIQ_MAX_SOURCE_BYTES || 500_000_000);
 const TRANSCRIBER_COMMAND = process.env.CLIPIQ_TRANSCRIBER_COMMAND || "";
 const OUTPUT_DIR = process.env.CLIPIQ_OUTPUT_DIR || join(process.cwd(), "worker-output");
+let lastQueueHealth = "";
+
+class CancellationError extends Error {
+  constructor() { super("Job was cancelled by the user"); this.name = "CancellationError"; }
+}
 
 function required(name) {
   const value = process.env[name];
@@ -63,12 +68,39 @@ async function notifyUser(userId, title, detail) {
   });
 }
 
+async function recordJobEvent(job, eventType, message, stage = null, errorCode = null) {
+  await supabase("job_events", {
+    method: "POST", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ job_id: job.id, user_id: job.user_id, event_type: eventType, stage, message, error_code: errorCode }),
+  });
+}
+
+async function assertJobActive(job) {
+  const rows = await supabase(`jobs?id=eq.${encodeURIComponent(job.id)}&select=status`);
+  if (rows?.[0]?.status === "cancelled") throw new CancellationError();
+}
+
+async function readQueueHealth() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_clipiq_queue_health`, { method: "POST", headers: headers(), body: "{}" });
+  if (!response.ok) throw new Error(`Queue health failed (${response.status}): ${await response.text()}`);
+  const health = await response.json();
+  const summary = JSON.stringify(health);
+  if (summary !== lastQueueHealth) {
+    lastQueueHealth = summary;
+    console.log(`[${WORKER_ID}] queue health ${summary}`);
+  }
+  return health;
+}
+
 async function updateJob(id, update, notify = false) {
   await supabase(`jobs?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH", headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ ...update, worker_id: WORKER_ID, locked_at: update.locked_at ?? new Date().toISOString() }),
   });
-  if (notify && currentJob) await notifyUser(currentJob.user_id, "ClipIQ processing update", update.message);
+  if (notify && currentJob) {
+    await recordJobEvent(currentJob, "progress", update.message, update.stage || currentJob.stage || null);
+    await notifyUser(currentJob.user_id, "ClipIQ processing update", update.message);
+  }
 }
 
 async function downloadSource(url, directory) {
@@ -113,6 +145,7 @@ async function renderCandidates(input, candidates, directory) {
   await updateJob(currentJob.id, { status: "generating_clips", stage: "generating_clips", progress: 75, message: "Rendering candidate clips..." }, true);
   const rendered = [];
   for (let index = 0; index < candidates.length; index += 1) {
+    await assertJobActive(currentJob);
     const candidate = candidates[index];
     const file = join(directory, `clip-${index + 1}.mp4`);
     await exec("ffmpeg", ["-y", "-ss", String(candidate.start), "-i", input, "-t", String(candidate.duration), "-vf", "scale=1080:-2", "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", file]);
@@ -133,6 +166,7 @@ async function upload(file, storagePath) {
 async function saveResults(job, rendered) {
   const rows = [];
   for (const clip of rendered) {
+    await assertJobActive(job);
     const storagePath = `${job.user_id}/${job.id}/${basename(clip.file)}`;
     await upload(clip.file, storagePath);
     rows.push({ user_id: job.user_id, job_id: job.id, title: clip.title, hook: clip.hook, duration: `${Math.round(clip.duration)}s`, virality_score: clip.score, video_url: storagePath, status: "ready", captions: [], hashtags: [], platforms: ["TikTok", "Instagram", "YouTube"] });
@@ -140,6 +174,7 @@ async function saveResults(job, rendered) {
   await supabase("clips", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows) });
   await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "completed", clip_count: rows.length }) });
   await updateJob(job.id, { status: "completed", stage: "completed", progress: 100, message: "Analysis complete!", completed_at: new Date().toISOString(), error: null, locked_at: null });
+  await recordJobEvent(job, "completed", "Analysis complete", "completed");
   await notifyUser(job.user_id, "Analysis complete", "Your ClipIQ candidate clips are ready to review.");
 }
 
@@ -156,9 +191,13 @@ async function processJob(job) {
   const directory = await mkdtemp(join(tmpdir(), "clipiq-"));
   currentJob = job;
   try {
+    await assertJobActive(job);
+    await recordJobEvent(job, "claimed", "Worker started processing", "downloading");
     const input = await downloadSource(job.source_url, directory);
+    await assertJobActive(job);
     const duration = await mediaInfo(input);
     const audio = await extractAudio(input, directory);
+    await assertJobActive(job);
     const transcript = await transcribe(audio, directory);
     await updateJob(job.id, { status: "analyzing", stage: "analyzing", progress: 65, message: "Selecting clip candidates..." }, true);
     const candidates = await selectCandidates(duration, transcript);
@@ -166,6 +205,11 @@ async function processJob(job) {
     await saveResults(job, rendered);
     console.log(`[${WORKER_ID}] completed ${job.id}`);
   } catch (error) {
+    if (error instanceof CancellationError) {
+      await recordJobEvent(job, "cancelled", error.message, "cancelled");
+      console.log(`[${WORKER_ID}] cancelled ${job.id}`);
+      return;
+    }
     const classified = classifyError(error);
     const attempts = Number(job.processing_attempts || 1);
     const maxAttempts = Number(job.max_attempts || 3);
@@ -179,6 +223,7 @@ async function processJob(job) {
     if (!retryable) {
       await supabase(`projects?id=eq.${encodeURIComponent(job.project_id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed" }) });
     }
+    await recordJobEvent(job, retryable ? "retry_scheduled" : "dead_lettered", classified.message, retryable ? "queued" : "dead_letter", classified.code);
     await notifyUser(job.user_id, retryable ? "Analysis will retry" : "Analysis moved to review", retryable ? `${classified.code}: retry ${attempts}/${maxAttempts}` : `${classified.code}: ${classified.message}`);
     console.error(`[${WORKER_ID}] ${status} ${job.id}: ${classified.code} ${classified.message}`);
   } finally {
@@ -192,6 +237,7 @@ console.log(`[${WORKER_ID}] ClipIQ Phase 5 worker listening`);
 while (true) {
   try {
     await recoverStaleJobs();
+    await readQueueHealth();
     const job = await claimJob();
     if (job) await processJob(job);
     else await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
