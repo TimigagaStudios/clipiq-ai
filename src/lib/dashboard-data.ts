@@ -20,6 +20,15 @@ export type DashboardHistoryItem = {
   exportedAt: string;
 };
 
+export type DashboardJobEvent = {
+  id: string;
+  eventType: string;
+  stage: string | null;
+  message: string;
+  errorCode: string | null;
+  createdAt: string;
+};
+
 export type DashboardJob = {
   id: string;
   status: string;
@@ -33,6 +42,7 @@ export type DashboardJob = {
   maxAttempts: number;
   createdAt: string;
   completedAt: string | null;
+  events: DashboardJobEvent[];
 };
 
 export type DashboardAnalytics = {
@@ -135,13 +145,14 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
 
 export async function loadDashboardData(userId: string) {
   const supabase = getSupabase();
-  const [projectsResult, exportsResult, clipsResult, jobsResult] = await Promise.all([
+  const [projectsResult, exportsResult, clipsResult, jobsResult, eventsResult] = await Promise.all([
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,clip_id,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
     supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("jobs").select("id,status,stage,progress,message,error,last_error_code,dead_lettered_at,processing_attempts,max_attempts,created_at,completed_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("job_events").select("id,job_id,event_type,stage,message,error_code,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
   ]);
-  const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error;
+  const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error || eventsResult.error;
   if (error) throw error;
 
   const projects: DashboardProject[] = (projectsResult.data ?? []).map((project) => ({
@@ -153,11 +164,18 @@ export async function loadDashboardData(userId: string) {
     format: item.format, resolution: item.resolution, platform: item.platform,
     clipId: item.clip_id ? String(item.clip_id) : null, exportedAt: item.exported_at,
   }));
+  const eventsByJob = new Map<string, DashboardJobEvent[]>();
+  (eventsResult.data ?? []).forEach((event) => {
+    const list = eventsByJob.get(String(event.job_id)) ?? [];
+    list.push({ id: String(event.id), eventType: event.event_type, stage: event.stage, message: event.message, errorCode: event.error_code, createdAt: event.created_at });
+    eventsByJob.set(String(event.job_id), list);
+  });
   const jobs: DashboardJob[] = (jobsResult.data ?? []).map((job) => ({
     id: String(job.id), status: job.status, stage: job.stage, progress: job.progress,
     message: job.message, error: job.error, lastErrorCode: job.last_error_code,
     deadLetteredAt: job.dead_lettered_at, processingAttempts: job.processing_attempts,
     maxAttempts: job.max_attempts, createdAt: job.created_at, completedAt: job.completed_at,
+    events: eventsByJob.get(String(job.id)) ?? [],
   }));
   const clipRows = (clipsResult.data ?? []) as ClipRow[];
   const clips: DashboardClip[] = clipRows.map((clip) => ({
