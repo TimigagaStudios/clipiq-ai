@@ -27,6 +27,8 @@ export type DashboardJob = {
   progress: number;
   message: string;
   error: string | null;
+  lastErrorCode: string | null;
+  deadLetteredAt: string | null;
   processingAttempts: number;
   maxAttempts: number;
   createdAt: string;
@@ -137,7 +139,7 @@ export async function loadDashboardData(userId: string) {
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,clip_id,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
     supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
-    supabase.from("jobs").select("id,status,stage,progress,message,error,processing_attempts,max_attempts,created_at,completed_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    supabase.from("jobs").select("id,status,stage,progress,message,error,last_error_code,dead_lettered_at,processing_attempts,max_attempts,created_at,completed_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
   const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error;
   if (error) throw error;
@@ -153,7 +155,8 @@ export async function loadDashboardData(userId: string) {
   }));
   const jobs: DashboardJob[] = (jobsResult.data ?? []).map((job) => ({
     id: String(job.id), status: job.status, stage: job.stage, progress: job.progress,
-    message: job.message, error: job.error, processingAttempts: job.processing_attempts,
+    message: job.message, error: job.error, lastErrorCode: job.last_error_code,
+    deadLetteredAt: job.dead_lettered_at, processingAttempts: job.processing_attempts,
     maxAttempts: job.max_attempts, createdAt: job.created_at, completedAt: job.completed_at,
   }));
   const clipRows = (clipsResult.data ?? []) as ClipRow[];
@@ -279,6 +282,12 @@ export async function createUserExport(userId: string, clip: Record<string, unkn
 
 export async function retryUserJob(jobId: string) {
   const { data, error } = await getSupabase().rpc("retry_clipiq_job", { p_job_id: jobId }).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelUserJob(jobId: string) {
+  const { data, error } = await getSupabase().rpc("cancel_clipiq_job", { p_job_id: jobId }).single();
   if (error) throw error;
   return data;
 }
