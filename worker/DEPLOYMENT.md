@@ -1,4 +1,4 @@
- ClipIQ worker cloud deployment preparation
+# ClipIQ worker cloud deployment preparation
 
 Status: Deployment Pending. No cloud service has been connected by this code batch.
 
