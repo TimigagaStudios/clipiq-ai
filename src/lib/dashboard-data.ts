@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { CaptionStyle, ExportAspectRatio } from "./export-profiles";
 
 export type DashboardProject = {
   id: string;
@@ -293,6 +294,8 @@ export type ExportOptions = {
   format: "MP4";
   resolution: "1080p" | "720p";
   platform: "Download" | "TikTok" | "Instagram" | "YouTube";
+  aspectRatio: ExportAspectRatio;
+  captionStyle: CaptionStyle;
 };
 
 export async function createUserExport(userId: string, clip: Record<string, unknown>, options: ExportOptions) {
@@ -300,6 +303,7 @@ export async function createUserExport(userId: string, clip: Record<string, unkn
   const { error } = await getSupabase().from("exports").insert({
     user_id: userId, clip_id: clipId, title: String(clip.title ?? "ClipIQ export"),
     thumbnail: clip.thumbnail ?? null, format: options.format, resolution: options.resolution, platform: options.platform,
+    aspect_ratio: options.aspectRatio, caption_style: options.captionStyle, status: "saved",
   });
   if (error) throw error;
 }
