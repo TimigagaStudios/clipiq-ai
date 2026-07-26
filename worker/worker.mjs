@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import { rankCandidates } from "./lib/ai-provider.mjs";
 import { transcribeAudio } from "./lib/transcriber.mjs";
 import { downloadSource as downloadWithAdapter } from "./lib/source-adapter.mjs";
+import { writeCaptionFile } from "./lib/captions.mjs";
+import { videoFilterFor } from "./lib/render-profiles.mjs";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
@@ -148,14 +150,16 @@ async function selectCandidates(duration, transcript) {
   return rankCandidates({ transcript, candidates });
 }
 
-async function renderCandidates(input, candidates, directory) {
+async function renderCandidates(input, candidates, directory, transcript) {
   await updateJob(currentJob.id, { status: "generating_clips", stage: "generating_clips", progress: 75, message: "Rendering candidate clips..." }, true);
   const rendered = [];
+  const captionFile = process.env.CLIPIQ_CAPTION_STYLE === "none" ? "" : await writeCaptionFile(directory, transcript, process.env.CLIPIQ_CAPTION_STYLE || "default");
+  const videoFilter = videoFilterFor(process.env.CLIPIQ_RENDER_PROFILE || "landscape", captionFile);
   for (let index = 0; index < candidates.length; index += 1) {
     await assertJobActive(currentJob);
     const candidate = candidates[index];
     const file = join(directory, `clip-${index + 1}.mp4`);
-    await exec("ffmpeg", ["-y", "-ss", String(candidate.start), "-i", input, "-t", String(candidate.duration), "-vf", "scale=1080:-2", "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", file]);
+    await exec("ffmpeg", ["-y", "-ss", String(candidate.start), "-i", input, "-t", String(candidate.duration), "-vf", videoFilter, "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", file]);
     rendered.push({ ...candidate, file });
   }
   return rendered;
@@ -208,7 +212,7 @@ async function processJob(job) {
     const transcript = await transcribe(audio, directory);
     await updateJob(job.id, { status: "analyzing", stage: "analyzing", progress: 65, message: "Selecting clip candidates..." }, true);
     const candidates = await selectCandidates(duration, transcript);
-    const rendered = await renderCandidates(input, candidates, directory);
+    const rendered = await renderCandidates(input, candidates, directory, transcript);
     await saveResults(job, rendered);
     console.log(`[${WORKER_ID}] completed ${job.id}`);
   } catch (error) {
