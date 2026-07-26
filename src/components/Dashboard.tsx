@@ -42,6 +42,7 @@ import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
 import { cancelUserJob, clearUserExports, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadUserJobClips, loadUserJobStatus, retryUserJob } from "../lib/dashboard-data";
 import { getClipSignedUrl } from "../lib/clip-url";
+import { exportProfiles, type CaptionStyle, type ExportAspectRatio } from "../lib/export-profiles";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
@@ -88,6 +89,8 @@ const Dashboard = () => {
   const [clearingHistory, setClearingHistory] = useState(false);
   const [exportResolution, setExportResolution] = useState<"1080p" | "720p">("1080p");
   const [exportPlatform, setExportPlatform] = useState<"Download" | "TikTok" | "Instagram" | "YouTube">("Download");
+  const [exportAspectRatio, setExportAspectRatio] = useState<ExportAspectRatio>("16:9");
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>("default");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -367,7 +370,7 @@ const Dashboard = () => {
       return;
     }
     try {
-      await createUserExport(user.id, clip, { format: "MP4", resolution: exportResolution, platform: exportPlatform });
+      await createUserExport(user.id, clip, { format: "MP4", resolution: exportResolution, platform: exportPlatform, aspectRatio: exportAspectRatio, captionStyle });
       setSettingsNotice(`${exportResolution} ${exportPlatform} export saved to your history.`);
       await refreshDashboardData();
     } catch (err) {
@@ -841,7 +844,9 @@ const Dashboard = () => {
                                 <h3 className="text-sm font-semibold">Generated Clips ({clips.length})</h3>
                                 <div className="flex flex-wrap gap-2">
                                   <select value={exportResolution} onChange={(event) => setExportResolution(event.target.value as "1080p" | "720p")} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="1080p">1080p</option><option value="720p">720p</option></select>
-                                  <select value={exportPlatform} onChange={(event) => setExportPlatform(event.target.value as "Download" | "TikTok" | "Instagram" | "YouTube")} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="Download">Download</option><option value="TikTok">TikTok</option><option value="Instagram">Instagram</option><option value="YouTube">YouTube Shorts</option></select>
+                                  <select value={exportPlatform} onChange={(event) => { const next = event.target.value as "Download" | "TikTok" | "Instagram" | "YouTube"; setExportPlatform(next); setExportAspectRatio(exportProfiles[next].aspectRatio); }} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="Download">Download</option><option value="TikTok">TikTok</option><option value="Instagram">Instagram</option><option value="YouTube">YouTube Shorts</option></select>
+                                  <select value={exportAspectRatio} onChange={(event) => setExportAspectRatio(event.target.value as ExportAspectRatio)} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option></select>
+                                  <select value={captionStyle} onChange={(event) => setCaptionStyle(event.target.value as CaptionStyle)} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="default">Captions: Default</option><option value="bold">Captions: Bold</option><option value="subtitle">Captions: Subtitle</option><option value="comic">Captions: Comic</option></select>
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
