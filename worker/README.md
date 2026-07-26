@@ -16,7 +16,7 @@ This worker is the first local-first Phase 5 vertical slice. It consumes authent
 - Saves clip metadata and updates projects/jobs, including failures.
 - Recovers jobs with expired worker locks and creates completion/failure notifications.
 
-The fallback is deliberately not described as AI transcription or AI clip selection. Provider adapters are included but deployment is pending: set `CLIPIQ_AI_PROVIDER=gemini`, `groq`, or `openrouter` with the matching server-only key to activate remote ranking. Set `CLIPIQ_TRANSCRIBER_COMMAND` or `FASTER_WHISPER_COMMAND` to connect a Faster-Whisper command. Set `CLIPIQ_YTDLP_COMMAND` to connect yt-dlp for supported page URLs.
+The fallback is deliberately not described as AI transcription or AI clip selection. Provider adapters are included but deployment is pending: set `CLIPIQ_AI_PROVIDER=gemini`, `groq`, or `openrouter` with the matching server-only key to activate remote ranking. Set `CLIPIQ_TRANSCRIBER_COMMAND` or `FASTER_WHISPER_COMMAND` to connect a Faster-Whisper command. Set `CLIPIQ_YTDLP_COMMAND` to connect yt-dlp for supported page URLs. Set `CLIPIQ_RENDER_PROFILE` to `landscape`, `vertical`, or `square`, and `CLIPIQ_CAPTION_STYLE` to `default`, `bold`, `subtitle`, `comic`, or `none` for Phase 6 rendering defaults.
 
 ## Prerequisites
 
