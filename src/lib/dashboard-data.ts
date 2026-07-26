@@ -116,7 +116,7 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
       title: clip.title,
       views: formatCompact(score * 250),
       engagement: `${Math.max(1, Math.round(score / 10))}%`,
-      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "Ã¢ÂÂ",
+      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂ¢ÃÂÃÂ",
     };
   });
 
@@ -289,11 +289,17 @@ export async function failUserJob(userId: string, projectId: string, jobId: stri
   ]);
 }
 
-export async function createUserExport(userId: string, clip: Record<string, unknown>, platform = "Download") {
+export type ExportOptions = {
+  format: "MP4";
+  resolution: "1080p" | "720p";
+  platform: "Download" | "TikTok" | "Instagram" | "YouTube";
+};
+
+export async function createUserExport(userId: string, clip: Record<string, unknown>, options: ExportOptions) {
   const clipId = typeof clip.id === "string" && /^[0-9a-f-]{36}$/i.test(clip.id) ? clip.id : null;
   const { error } = await getSupabase().from("exports").insert({
     user_id: userId, clip_id: clipId, title: String(clip.title ?? "ClipIQ export"),
-    thumbnail: clip.thumbnail ?? null, format: "MP4", resolution: "1080p", platform,
+    thumbnail: clip.thumbnail ?? null, format: options.format, resolution: options.resolution, platform: options.platform,
   });
   if (error) throw error;
 }
