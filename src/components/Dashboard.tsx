@@ -86,6 +86,8 @@ const Dashboard = () => {
   const [error, setError] = useState("");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [clearingHistory, setClearingHistory] = useState(false);
+  const [exportResolution, setExportResolution] = useState<"1080p" | "720p">("1080p");
+  const [exportPlatform, setExportPlatform] = useState<"Download" | "TikTok" | "Instagram" | "YouTube">("Download");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -346,7 +348,14 @@ const Dashboard = () => {
         ? await getClipSignedUrl(clip.id, session.access_token)
         : clip.videoUrl;
       if (!url) throw new Error("This clip does not have a rendered video yet.");
-      window.open(url, "_blank", "noopener,noreferrer");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "clipiq-clip.mp4";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open the rendered clip.");
     }
@@ -358,8 +367,8 @@ const Dashboard = () => {
       return;
     }
     try {
-      await createUserExport(user.id, clip);
-      setSettingsNotice("Export saved to your history.");
+      await createUserExport(user.id, clip, { format: "MP4", resolution: exportResolution, platform: exportPlatform });
+      setSettingsNotice(`${exportResolution} ${exportPlatform} export saved to your history.`);
       await refreshDashboardData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save export.");
@@ -828,7 +837,13 @@ const Dashboard = () => {
                               animate={{ opacity: 1, y: 0 }}
                               className="space-y-4 pt-4 border-t border-white/10"
                             >
-                              <h3 className="text-sm font-semibold">Generated Clips ({clips.length})</h3>
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <h3 className="text-sm font-semibold">Generated Clips ({clips.length})</h3>
+                                <div className="flex flex-wrap gap-2">
+                                  <select value={exportResolution} onChange={(event) => setExportResolution(event.target.value as "1080p" | "720p")} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="1080p">1080p</option><option value="720p">720p</option></select>
+                                  <select value={exportPlatform} onChange={(event) => setExportPlatform(event.target.value as "Download" | "TikTok" | "Instagram" | "YouTube")} className="h-8 rounded-lg border border-white/10 bg-[#100b1d] px-2 text-[10px] text-white"><option value="Download">Download</option><option value="TikTok">TikTok</option><option value="Instagram">Instagram</option><option value="YouTube">YouTube Shorts</option></select>
+                                </div>
+                              </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {clips.map((clip) => (
                                   <Card key={clip.id} className="bg-white/[0.03] border-white/10 overflow-hidden group">
@@ -1007,7 +1022,7 @@ const Dashboard = () => {
                         <div className="w-12 h-12 rounded-lg bg-white/10 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{clip.title}</p>
-                          <p className="text-[10px] text-muted-foreground">{clip.views} views ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {clip.engagement} engagement</p>
+                          <p className="text-[10px] text-muted-foreground">{clip.views} views ĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂ {clip.engagement} engagement</p>
                         </div>
                         <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] shrink-0">{clip.change}</Badge>
                       </div>
@@ -1059,10 +1074,10 @@ const Dashboard = () => {
                         const terminalFailure = job.status === "failed" || job.status === "dead_letter";
                         return <div key={job.id} className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4">
                           <div role="button" tabIndex={0} onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)} className="flex cursor-pointer flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0"><p className="truncate text-sm font-semibold">{job.message}</p><p className="mt-1 text-xs text-muted-foreground">{job.stage} Âˇ {job.progress}% Âˇ attempt {job.processingAttempts}/{job.maxAttempts}</p></div>
+                            <div className="min-w-0"><p className="truncate text-sm font-semibold">{job.message}</p><p className="mt-1 text-xs text-muted-foreground">{job.stage} ĂË {job.progress}% ĂË attempt {job.processingAttempts}/{job.maxAttempts}</p></div>
                             <div className="flex items-center gap-3"><span className={cn("rounded-full px-2 py-1 text-[10px] font-bold uppercase", terminalFailure ? "bg-red-500/10 text-red-300" : job.status === "completed" ? "bg-green-500/10 text-green-300" : "bg-brand/10 text-brand-2")}>{job.status.replace("_", " ")}</span>{terminalFailure && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void handleRetryJob(job.id); }}>Retry</Button>}{job.status === "queued" && <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void handleCancelJob(job.id); }}>Cancel</Button>}</div>
                           </div>
-                          {selectedJob?.id === job.id && <div className="border-t border-white/10 pt-3 text-xs text-muted-foreground"><p><span className="text-white">Status:</span> {job.status} Âˇ {job.stage}</p>{job.lastErrorCode && <p className="mt-1"><span className="text-white">Error code:</span> {job.lastErrorCode}</p>}{job.error && <p className="mt-1 break-words text-red-300"><span className="text-white">Details:</span> {job.error}</p>}<p className="mt-1">Started {timeAgo(job.createdAt)}{job.completedAt ? ` Âˇ completed ${timeAgo(job.completedAt)}` : ""}</p>{job.events?.length > 0 && <div className="mt-3 space-y-2 border-t border-white/10 pt-3"><p className="font-semibold text-white">Audit timeline</p>{job.events.slice(0, 8).map((event: any) => <div key={event.id} className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" /><span><span className="text-white">{event.eventType.replace("_", " ")}</span> Âˇ {event.message}<span className="ml-1 opacity-60">{timeAgo(event.createdAt)}</span></span></div>)}</div>}</div>}
+                          {selectedJob?.id === job.id && <div className="border-t border-white/10 pt-3 text-xs text-muted-foreground"><p><span className="text-white">Status:</span> {job.status} ĂË {job.stage}</p>{job.lastErrorCode && <p className="mt-1"><span className="text-white">Error code:</span> {job.lastErrorCode}</p>}{job.error && <p className="mt-1 break-words text-red-300"><span className="text-white">Details:</span> {job.error}</p>}<p className="mt-1">Started {timeAgo(job.createdAt)}{job.completedAt ? ` ĂË completed ${timeAgo(job.completedAt)}` : ""}</p>{job.events?.length > 0 && <div className="mt-3 space-y-2 border-t border-white/10 pt-3"><p className="font-semibold text-white">Audit timeline</p>{job.events.slice(0, 8).map((event: any) => <div key={event.id} className="flex gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" /><span><span className="text-white">{event.eventType.replace("_", " ")}</span> ĂË {event.message}<span className="ml-1 opacity-60">{timeAgo(event.createdAt)}</span></span></div>)}</div>}</div>}
                         </div>;
                       })}
                     </CardContent>
@@ -1083,7 +1098,7 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-1 text-center sm:text-left">
                           <h4 className="font-bold text-sm">{item.title}</h4>
-                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.format} ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂËÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂË {item.resolution}</p>
+                          <p className="text-xs text-muted-foreground">Exported {timeAgo(item.exportedAt)} ĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂ {item.format} ĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂ {item.resolution}</p>
                         </div>
                         <div className="flex gap-2 w-full sm:w-auto">
                           <Button size="sm" variant="outline" disabled={!item.clipId} onClick={() => void handleDownloadClip({ id: item.clipId ?? undefined })} className="flex-1 sm:flex-none h-8 text-xs gap-2"><Download className="w-3.5 h-3.5" /> Download</Button>
@@ -1138,7 +1153,7 @@ const Dashboard = () => {
                     {settingsNotice && (
                       <div className="flex items-start justify-between gap-4 rounded-xl border border-brand/25 bg-brand/10 px-4 py-3 text-sm text-white">
                         <span>{settingsNotice}</span>
-                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂÄÂĂÂ</button>
+                        <button type="button" onClick={() => setSettingsNotice("")} aria-label="Dismiss message" className="text-brand-2 hover:text-white">ĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂĂÂĂÂÄÂĂÂ</button>
                       </div>
                     )}
 
