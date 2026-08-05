@@ -1,6 +1,17 @@
 import { getSupabase } from "./supabase";
 import type { CaptionStyle, ExportAspectRatio } from "./export-profiles";
 
+export type DashboardPublishRequest = {
+  id: string;
+  clipId: string;
+  platform: "TikTok" | "Instagram" | "YouTube";
+  title: string | null;
+  status: "queued" | "publishing" | "published" | "failed";
+  error: string | null;
+  createdAt: string;
+  publishedAt: string | null;
+};
+
 export type DashboardProject = {
   id: string;
   title: string;
@@ -117,7 +128,7 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
       title: clip.title,
       views: formatCompact(score * 250),
       engagement: `${Math.max(1, Math.round(score / 10))}%`,
-      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ",
+      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ",
     };
   });
 
@@ -146,14 +157,15 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
 
 export async function loadDashboardData(userId: string) {
   const supabase = getSupabase();
-  const [projectsResult, exportsResult, clipsResult, jobsResult, eventsResult] = await Promise.all([
+  const [projectsResult, exportsResult, clipsResult, jobsResult, eventsResult, publishResult] = await Promise.all([
     supabase.from("projects").select("id,title,thumbnail,clip_count,status,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("exports").select("id,title,thumbnail,format,resolution,platform,clip_id,exported_at").eq("user_id", userId).order("exported_at", { ascending: false }),
     supabase.from("clips").select("id,title,hook,duration,thumbnail,video_url,virality_score,created_at").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("jobs").select("id,status,stage,progress,message,error,last_error_code,dead_lettered_at,processing_attempts,max_attempts,created_at,completed_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
     supabase.from("job_events").select("id,job_id,event_type,stage,message,error_code,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+    supabase.from("publish_requests").select("id,clip_id,platform,title,status,error,created_at,published_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
-  const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error || eventsResult.error;
+  const error = projectsResult.error || exportsResult.error || clipsResult.error || jobsResult.error || eventsResult.error || publishResult.error;
   if (error) throw error;
 
   const projects: DashboardProject[] = (projectsResult.data ?? []).map((project) => ({
@@ -164,6 +176,11 @@ export async function loadDashboardData(userId: string) {
     id: String(item.id), title: item.title, thumbnail: item.thumbnail,
     format: item.format, resolution: item.resolution, platform: item.platform,
     clipId: item.clip_id ? String(item.clip_id) : null, exportedAt: item.exported_at,
+  }));
+  const publishRequests: DashboardPublishRequest[] = (publishResult.data ?? []).map((request) => ({
+    id: String(request.id), clipId: String(request.clip_id), platform: request.platform,
+    title: request.title, status: request.status, error: request.error,
+    createdAt: request.created_at, publishedAt: request.published_at,
   }));
   const eventsByJob = new Map<string, DashboardJobEvent[]>();
   (eventsResult.data ?? []).forEach((event) => {
@@ -188,6 +205,7 @@ export async function loadDashboardData(userId: string) {
     history,
     clips,
     jobs,
+    publishRequests,
     totals: { videos: projects.length, clips: clips.length, exports: history.length },
     analytics: deriveAnalytics(clipRows, (exportsResult.data ?? []) as ExportRow[]),
   };
