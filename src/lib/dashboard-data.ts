@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
 import type { CaptionStyle, ExportAspectRatio } from "./export-profiles";
+import type { ProviderConnection } from "./provider-connections";
 
 export type DashboardPublishRequest = {
   id: string;
@@ -128,7 +129,7 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
       title: clip.title,
       views: formatCompact(score * 250),
       engagement: `${Math.max(1, Math.round(score / 10))}%`,
-      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ",
+      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ",
     };
   });
 
@@ -336,6 +337,18 @@ export async function cancelUserJob(jobId: string) {
   const { data, error } = await getSupabase().rpc("cancel_clipiq_job", { p_job_id: jobId }).single();
   if (error) throw error;
   return data;
+}
+
+export async function loadProviderConnections(userId: string): Promise<ProviderConnection[]> {
+  const { data, error } = await getSupabase().from("provider_connections")
+    .select("id,provider,status,provider_account_name,scopes,token_expires_at,last_error")
+    .eq("user_id", userId).order("provider");
+  if (error) throw error;
+  return (data ?? []).map((connection) => ({
+    id: String(connection.id), provider: connection.provider, status: connection.status,
+    providerAccountName: connection.provider_account_name, scopes: connection.scopes ?? [],
+    tokenExpiresAt: connection.token_expires_at, lastError: connection.last_error,
+  }));
 }
 
 export async function createPublishRequest(userId: string, clip: Record<string, unknown>, platform: "TikTok" | "Instagram" | "YouTube") {
