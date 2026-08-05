@@ -117,7 +117,7 @@ function deriveAnalytics(clips: ClipRow[], exportsRows: ExportRow[]): DashboardA
       title: clip.title,
       views: formatCompact(score * 250),
       engagement: `${Math.max(1, Math.round(score / 10))}%`,
-      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂ¢ÃÂÃÂ",
+      change: score ? `+${Math.max(1, Math.round(score / 20))}%` : "ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ",
     };
   });
 
@@ -316,6 +316,17 @@ export async function retryUserJob(jobId: string) {
 
 export async function cancelUserJob(jobId: string) {
   const { data, error } = await getSupabase().rpc("cancel_clipiq_job", { p_job_id: jobId }).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function createPublishRequest(userId: string, clip: Record<string, unknown>, platform: "TikTok" | "Instagram" | "YouTube") {
+  if (typeof clip.id !== "string" || !/^[0-9a-f-]{36}$/i.test(clip.id)) {
+    throw new Error("Publish requests require a saved rendered clip.");
+  }
+  const { data, error } = await getSupabase().from("publish_requests").insert({
+    user_id: userId, clip_id: clip.id, platform, title: String(clip.title ?? "ClipIQ clip"), status: "queued",
+  }).select("id,status,platform").single();
   if (error) throw error;
   return data;
 }
