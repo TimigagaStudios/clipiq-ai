@@ -16,3 +16,10 @@ export const providerLabels: Record<ProviderName, string> = {
   instagram: "Instagram Reels",
   tiktok: "TikTok",
 };
+
+export async function beginProviderConnection(provider: ProviderName, accessToken: string) {
+  const response = await fetch(`/api/providers/${provider}/connect`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Could not start provider connection.");
+  return body.authUrl as string;
+}
