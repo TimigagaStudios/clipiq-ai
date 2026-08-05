@@ -8,6 +8,7 @@ import { transcribeAudio } from "./lib/transcriber.mjs";
 import { downloadSource as downloadWithAdapter } from "./lib/source-adapter.mjs";
 import { writeCaptionFile } from "./lib/captions.mjs";
 import { videoFilterFor } from "./lib/render-profiles.mjs";
+import { publishClip } from "./lib/publishing.mjs";
 import { promisify } from "node:util";
 
 const exec = promisify(execFile);
@@ -92,6 +93,21 @@ async function readQueueHealth() {
     console.log(`[${WORKER_ID}] queue health ${summary}`);
   }
   return health;
+}
+
+async function processPublishingQueue() {
+  const requests = await supabase("publish_requests?status=eq.queued&select=*&order=created_at.asc&limit=1");
+  const request = requests?.[0];
+  if (!request) return;
+  try {
+    const result = await publishClip(request);
+    if (result.status !== "queued") {
+      await supabase(`publish_requests?id=eq.${encodeURIComponent(request.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: result.status, updated_at: new Date().toISOString() }) });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await supabase(`publish_requests?id=eq.${encodeURIComponent(request.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "failed", error: message, updated_at: new Date().toISOString() }) });
+  }
 }
 
 async function recordHeartbeat(queueHealth) {
@@ -250,6 +266,7 @@ while (true) {
     await recoverStaleJobs();
     const queueHealth = await readQueueHealth();
     await recordHeartbeat(queueHealth);
+    await processPublishingQueue();
     const job = await claimJob();
     if (job) await processJob(job);
     else await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
