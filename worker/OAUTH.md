@@ -12,6 +12,9 @@ SUPABASE_SERVICE_ROLE_KEY
 OAUTH_STATE_SECRET
 YOUTUBE_CLIENT_ID
 YOUTUBE_REDIRECT_URI
+YOUTUBE_CLIENT_SECRET
+OAUTH_TOKEN_ENCRYPTION_KEY
+APP_URL
 ```
 
-The browser receives only an authorization URL. Provider secrets and tokens must remain server-side. Token exchange and encrypted token storage are intentionally deployment work and are not claimed as live.
+The browser receives only an authorization URL. The callback verifies signed state, exchanges the YouTube code, and encrypts tokens with AES-256-GCM before server-side storage. Provider secrets and encryption keys remain server-side. Live OAuth execution and provider verification are still Deployment Pending.
