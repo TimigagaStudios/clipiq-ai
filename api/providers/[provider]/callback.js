@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
     const { error } = await admin.from('provider_secrets').upsert({ user_id: state.userId, provider: 'youtube', encrypted_access_token: access.value, encrypted_refresh_token: refresh?.value || null, encryption_iv: access.iv, encryption_tag: access.tag, updated_at: new Date().toISOString() }, { onConflict: 'user_id,provider' });
     if (error) throw error;
-    const { error: connectionError } = await admin.from('provider_connections').upsert({ user_id: state.userId, provider: 'youtube', status: 'connected', provider_account_name: accountName, scopes: ['https://www.googleapis.com/auth/youtube.upload'], token_expires_at: tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000).toISOString() : null, last_error: null, updated_at: new Date().toISOString() }, { onConflict: 'user_id,provider' });
+    const { error: connectionError } = await admin.from('provider_connections').upsert({ user_id: state.userId, provider: 'youtube', status: 'connected', provider_account_name: accountName, scopes: ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'], token_expires_at: tokens.expires_in ? new Date(Date.now() + Number(tokens.expires_in) * 1000).toISOString() : null, last_error: null, updated_at: new Date().toISOString() }, { onConflict: 'user_id,provider' });
     if (connectionError) throw connectionError;
     return redirect(res, { provider: 'youtube', connected: '1' });
   } catch (error) {
