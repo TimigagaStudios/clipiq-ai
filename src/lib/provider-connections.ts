@@ -23,3 +23,10 @@ export async function beginProviderConnection(provider: ProviderName, accessToke
   if (!response.ok) throw new Error(body.error || "Could not start provider connection.");
   return body.authUrl as string;
 }
+
+export async function disconnectProviderConnection(provider: ProviderName, accessToken: string) {
+  const response = await fetch(`/api/providers/${provider}/connect?action=disconnect`, { method: "POST", headers: { Authorization: `Bearer ${accessToken}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "Could not disconnect provider.");
+  return body.status as ProviderConnectionStatus;
+}
