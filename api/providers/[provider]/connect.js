@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 const providers = new Set(['youtube', 'instagram', 'tiktok']);
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
   const provider = String(req.query.provider || '').toLowerCase();
   if (!providers.has(provider)) return res.status(400).json({ error: 'Unsupported provider.' });
 
@@ -22,6 +22,15 @@ export default async function handler(req, res) {
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) return res.status(401).json({ error: 'Invalid session.' });
 
+  if (req.method === 'POST' && req.query.action === 'disconnect') {
+    const { error: secretError } = await admin.from('provider_secrets').delete().eq('user_id', data.user.id).eq('provider', provider);
+    if (secretError) return res.status(500).json({ error: secretError.message });
+    const { error: connectionError } = await admin.from('provider_connections').update({ status: 'disconnected', last_error: null, token_expires_at: null, updated_at: new Date().toISOString() }).eq('user_id', data.user.id).eq('provider', provider);
+    if (connectionError) return res.status(500).json({ error: connectionError.message });
+    return res.status(200).json({ provider, status: 'disconnected' });
+  }
+
+  if (req.method !== 'GET') return res.status(400).json({ error: 'Unsupported connection action.' });
   if (provider !== 'youtube') return res.status(501).json({ error: `${provider} OAuth is prepared but its provider integration is still pending.` });
   const clientId = process.env.YOUTUBE_CLIENT_ID;
   const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
