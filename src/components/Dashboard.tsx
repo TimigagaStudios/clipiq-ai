@@ -41,7 +41,7 @@ import { useProfile } from "../lib/profile";
 import { OnboardingModal } from "./OnboardingModal";
 import { getSupabase } from "../lib/supabase";
 import { cancelUserJob, clearUserExports, createPublishRequest, createUserExport, createUserJob, createUserProject, loadActiveJob, loadDashboardData, loadProviderConnections, loadUserJobClips, loadUserJobStatus, retryUserJob } from "../lib/dashboard-data";
-import { beginProviderConnection, providerLabels, type ProviderConnection } from "../lib/provider-connections";
+import { beginProviderConnection, disconnectProviderConnection, providerLabels, type ProviderConnection } from "../lib/provider-connections";
 import { getClipSignedUrl } from "../lib/clip-url";
 import { exportProfiles, type CaptionStyle, type ExportAspectRatio } from "../lib/export-profiles";
 
@@ -411,6 +411,17 @@ const Dashboard = () => {
       window.location.assign(authUrl);
     } catch (err) {
       setSettingsNotice(err instanceof Error ? err.message : "Provider connection is not configured yet.");
+    }
+  };
+
+  const handleDisconnectProvider = async (provider: "youtube" | "instagram" | "tiktok") => {
+    if (!session?.access_token) return;
+    try {
+      await disconnectProviderConnection(provider, session.access_token);
+      setProviderConnections((items) => items.map((item) => item.provider === provider ? { ...item, status: "disconnected", providerAccountName: null } : item));
+      setSettingsNotice(`${providerLabels[provider]} disconnected.`);
+    } catch (err) {
+      setSettingsNotice(err instanceof Error ? err.message : "Could not disconnect provider.");
     }
   };
 
@@ -1264,7 +1275,8 @@ const Dashboard = () => {
                         <CardContent className="space-y-3">
                           {(["youtube", "instagram", "tiktok"] as const).map((provider) => {
                             const connection = providerConnections.find((item) => item.provider === provider);
-                            return <div key={provider} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.025] p-4"><div><p className="text-sm font-semibold">{providerLabels[provider]}</p><p className="mt-1 text-xs text-muted-foreground">{connection?.providerAccountName || "Not connected"}</p></div><Button size="sm" variant="outline" onClick={() => void handleConnectProvider(provider)}>{connection?.status === "connected" ? "Connected" : "Connect"}</Button></div>;
+                            const connected = connection?.status === "connected";
+                            return <div key={provider} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4"><div className="min-w-0"><p className="text-sm font-semibold">{providerLabels[provider]}</p><p className="mt-1 truncate text-xs text-muted-foreground">{connected ? (connection?.providerAccountName || "Connected account") : "Not connected"}</p></div><div className="flex shrink-0 gap-2">{connected ? <><Button size="sm" variant="outline" disabled>Connected</Button><Button size="sm" variant="outline" onClick={() => void handleDisconnectProvider(provider)}>Disconnect</Button></> : <Button size="sm" variant="outline" onClick={() => void handleConnectProvider(provider)}>Connect</Button>}</div></div>;
                           })}
                           <p className="text-xs text-muted-foreground">OAuth tokens are never entered into the browser or committed to GitHub.</p>
                         </CardContent>
