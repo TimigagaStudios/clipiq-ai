@@ -140,6 +140,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!isConfigured || !user) return;
+    void loadProviderConnections(user.id)
+      .then(setProviderConnections)
+      .catch((err) => setSettingsNotice(err instanceof Error ? `Connection status could not be loaded: ${err.message}` : "Connection status could not be loaded."));
+  }, [isConfigured, user]);
+
+  useEffect(() => {
+    if (!isConfigured || !user) return;
     const loadNotifications = async () => {
       const supabase = getSupabase();
       let { data } = await supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
