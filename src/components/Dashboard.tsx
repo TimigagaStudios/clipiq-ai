@@ -133,6 +133,7 @@ const Dashboard = () => {
       setActiveTab("settings");
       setActiveSettingsTab("Connections");
       setSettingsNotice(connected ? "YouTube connected successfully." : `YouTube connection failed: ${error || "Unknown OAuth error."}`);
+      if (connected) void refreshDashboardData();
     });
     window.history.replaceState({}, document.title, window.location.pathname);
   }, []);
