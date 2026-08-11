@@ -40,6 +40,6 @@ export default async function handler(req, res) {
   const payload = `${data.user.id}:${provider}:${nonce}`;
   const signature = createHmac('sha256', stateSecret).update(payload).digest('hex');
   const state = Buffer.from(`${payload}:${signature}`).toString('base64url');
-  const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/youtube.upload', state });
+  const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly', state });
   return res.status(200).json({ provider, authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
 }
