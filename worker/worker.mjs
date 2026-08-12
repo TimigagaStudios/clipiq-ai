@@ -20,6 +20,7 @@ const POLL_INTERVAL_MS = Number(process.env.CLIPIQ_POLL_INTERVAL_MS || 3000);
 const MAX_SOURCE_BYTES = Number(process.env.CLIPIQ_MAX_SOURCE_BYTES || 500_000_000);
 const TRANSCRIBER_COMMAND = process.env.CLIPIQ_TRANSCRIBER_COMMAND || "";
 const OUTPUT_DIR = process.env.CLIPIQ_OUTPUT_DIR || join(process.cwd(), "worker-output");
+const ENCRYPTION_KEY = Buffer.from(process.env.OAUTH_TOKEN_ENCRYPTION_KEY || "", "hex");
 let lastQueueHealth = "";
 
 class CancellationError extends Error {
@@ -100,7 +101,7 @@ async function processPublishingQueue() {
   const request = requests?.[0];
   if (!request) return;
   try {
-    const result = await publishClip(request);
+    const result = await publishClip(request, { supabase, supabaseUrl: SUPABASE_URL, serviceRoleKey: SERVICE_ROLE_KEY, bucket: BUCKET, encryptionKey: ENCRYPTION_KEY });
     if (result.status !== "queued") {
       await supabase(`publish_requests?id=eq.${encodeURIComponent(request.id)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: result.status, updated_at: new Date().toISOString() }) });
     }
