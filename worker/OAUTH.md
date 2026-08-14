@@ -2,7 +2,7 @@
 
 Status: Deployment Pending.
 
-The current connection route starts YouTube OAuth only when server-side configuration exists. Instagram and TikTok return an honest pending response until their provider-specific flows are implemented.
+The connection route starts YouTube or Instagram OAuth only when server-side configuration exists. TikTok remains pending until its provider-specific flow is implemented.
 
 Required server-side variables for YouTube:
 
@@ -13,6 +13,9 @@ OAUTH_STATE_SECRET
 YOUTUBE_CLIENT_ID
 YOUTUBE_REDIRECT_URI
 YOUTUBE_CLIENT_SECRET
+META_APP_ID
+META_APP_SECRET
+META_REDIRECT_URI
 OAUTH_TOKEN_ENCRYPTION_KEY
 APP_URL
 ```
