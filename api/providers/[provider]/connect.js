@@ -31,15 +31,23 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'GET') return res.status(400).json({ error: 'Unsupported connection action.' });
-  if (provider !== 'youtube') return res.status(501).json({ error: `${provider} OAuth is prepared but its provider integration is still pending.` });
-  const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
-  if (!clientId || !redirectUri) return res.status(503).json({ error: 'YouTube OAuth is not configured yet.' });
-
   const nonce = randomBytes(18).toString('hex');
   const payload = `${data.user.id}:${provider}:${nonce}`;
   const signature = createHmac('sha256', stateSecret).update(payload).digest('hex');
   const state = Buffer.from(`${payload}:${signature}`).toString('base64url');
-  const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly', state });
-  return res.status(200).json({ provider, authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+  if (provider === 'youtube') {
+    const clientId = process.env.YOUTUBE_CLIENT_ID;
+    const redirectUri = process.env.YOUTUBE_REDIRECT_URI;
+    if (!clientId || !redirectUri) return res.status(503).json({ error: 'YouTube OAuth is not configured yet.' });
+    const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly', state });
+    return res.status(200).json({ provider, authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+  }
+  if (provider === 'instagram') {
+    const clientId = process.env.META_APP_ID;
+    const redirectUri = process.env.META_REDIRECT_URI;
+    if (!clientId || !redirectUri) return res.status(503).json({ error: 'Instagram OAuth is not configured yet.' });
+    const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', scope: 'instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement', state });
+    return res.status(200).json({ provider, authUrl: `https://www.facebook.com/v20.0/dialog/oauth?${params}` });
+  }
+  return res.status(501).json({ error: 'TikTok OAuth is prepared but its provider integration is still pending.' });
 }
